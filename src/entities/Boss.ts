@@ -22,6 +22,7 @@ export class Boss extends Phaser.Physics.Arcade.Sprite {
   private attackCooldown: number = 0;
   private phaseTimer: number = 0;
   private currentAttack: number = 0;
+  private actionAnimTimer: number = 0;
 
   // Visual
   private healthBar: HealthBar;
@@ -162,7 +163,7 @@ export class Boss extends Phaser.Physics.Arcade.Sprite {
     this.nameText.setPosition(this.x, this.y - this.bossData.height * this.scaleY - 50);
 
     // Update texture
-    this.updateTexture();
+    this.updateTexture(delta);
   }
 
   private moveTowardPlayer(delta: number): void {
@@ -319,6 +320,7 @@ export class Boss extends Phaser.Physics.Arcade.Sprite {
   takeDamage(amount: number): boolean {
     if (this.isDefeated) return false;
     this.hp -= amount;
+    this.playBossAnim('hurt', 220);
 
     // Flash
     this.setTintFill(0xffffff);
@@ -380,8 +382,13 @@ export class Boss extends Phaser.Physics.Arcade.Sprite {
     });
   }
 
-  private updateTexture(): void {
+  private updateTexture(delta: number): void {
     if (this.isDefeated) return;
+    if (this.actionAnimTimer > 0) {
+      this.actionAnimTimer -= delta;
+      return;
+    }
+
     const suffix = this.phase === 'hurt' ? 'hurt' : 'idle';
     const animKey = `${this.bossData.type}_${suffix}`;
     if (this.scene.anims.exists(animKey)) {
@@ -395,10 +402,17 @@ export class Boss extends Phaser.Physics.Arcade.Sprite {
     }
   }
 
-  private playBossAnim(suffix: string): void {
+  private playBossAnim(suffix: string, duration: number = suffix === 'special' ? 700 : 450): void {
     const animKey = `${this.bossData.type}_${suffix}`;
+    this.actionAnimTimer = duration;
     if (this.scene.anims.exists(animKey)) {
       this.anims.play(animKey, true);
+      return;
+    }
+
+    const legacyKey = `${this.bossData.type}_${suffix}`;
+    if (this.scene.textures.exists(legacyKey)) {
+      this.setTexture(legacyKey);
     }
   }
 

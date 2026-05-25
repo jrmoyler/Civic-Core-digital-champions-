@@ -97,9 +97,20 @@ export class CharacterSelectScene extends Phaser.Scene {
       cardBg.strokeRoundedRect(0, 0, cardW, cardH, 10);
       container.add(cardBg);
 
-      // Hero preview from sheet (or procedural sprite)
-      const heroImg = this.add.image(cardW / 2, 100, `${hero.id}_idle`);
-      heroImg.setDisplaySize(64, 90);
+      // Hero preview uses the same cleaned real sprites that appear in-game.
+      const spriteKey = `hero_${hero.id}_idle`;
+      const fallbackKey = `${hero.id}_idle`;
+      const heroImg = this.add.sprite(
+        cardW / 2,
+        100,
+        this.textures.exists(spriteKey) ? spriteKey : fallbackKey,
+        0
+      );
+      heroImg.setDisplaySize(78, 90);
+      const idleAnimKey = `${hero.id}_idle`;
+      if (this.anims.exists(idleAnimKey)) {
+        heroImg.play(idleAnimKey);
+      }
       container.add(heroImg);
 
       // Glow effect behind hero
