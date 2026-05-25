@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <title>CIVIC CORE: DIGITAL CHAMPIONS</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #0a0a1a;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Courier New', monospace;
+    }
+
+    #game-container {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    canvas {
+      display: block;
+      touch-action: none;
+      -webkit-tap-highlight-color: transparent;
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    #loading-screen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: #0a0a1a;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      color: #4A90D9;
+    }
+
+    #loading-screen h1 {
+      font-size: 2em;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      color: #4A90D9;
+      text-shadow: 0 0 20px #4A90D9;
+      margin-bottom: 20px;
+    }
+
+    #loading-screen p {
+      color: #88aacc;
+      font-size: 0.8em;
+      letter-spacing: 2px;
+    }
+
+    #loading-screen.hidden {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="loading-screen">
+    <h1>CIVIC CORE</h1>
+    <p>DIGITAL CHAMPIONS</p>
+    <p style="margin-top:20px;color:#556677;">Loading...</p>
+  </div>
+  <div id="game-container"></div>
+  <script type="module" src="/src/main.ts"></script>
+  <script>
+    window.addEventListener('load', () => {
+      setTimeout(() => {
+        const ls = document.getElementById('loading-screen');
+        if (ls) ls.classList.add('hidden');
+      }, 1000);
+    });
+  </script>
+</body>
+</html>

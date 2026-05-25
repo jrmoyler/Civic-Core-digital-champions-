@@ -1,0 +1,17 @@
+{
+  "name": "civic-core-digital-champions",
+  "version": "1.0.0",
+  "description": "CIVIC CORE: DIGITAL CHAMPIONS - A 2D Mobile-First Side-Scrolling Action Platformer",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "phaser": "^3.60.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.2.0",
+    "vite": "^4.5.0"
+  }
+}
