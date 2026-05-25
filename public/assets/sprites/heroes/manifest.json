@@ -1,0 +1,110 @@
+{
+  "hero_creator_idle": {
+    "path": "assets/sprites/heroes/creator_idle.png",
+    "frameWidth": 104,
+    "frameHeight": 120,
+    "frameCount": 4
+  },
+  "hero_creator_run": {
+    "path": "assets/sprites/heroes/creator_run.png",
+    "frameWidth": 69,
+    "frameHeight": 88,
+    "frameCount": 6
+  },
+  "hero_creator_jump": {
+    "path": "assets/sprites/heroes/creator_jump.png",
+    "frameWidth": 208,
+    "frameHeight": 89,
+    "frameCount": 2
+  },
+  "hero_creator_attack": {
+    "path": "assets/sprites/heroes/creator_attack.png",
+    "frameWidth": 104,
+    "frameHeight": 90,
+    "frameCount": 4
+  },
+  "hero_creator_ability": {
+    "path": "assets/sprites/heroes/creator_ability.png",
+    "frameWidth": 104,
+    "frameHeight": 96,
+    "frameCount": 4
+  },
+  "hero_creator_hurt": {
+    "path": "assets/sprites/heroes/creator_hurt.png",
+    "frameWidth": 208,
+    "frameHeight": 79,
+    "frameCount": 2
+  },
+  "hero_coder_idle": {
+    "path": "assets/sprites/heroes/coder_idle.png",
+    "frameWidth": 104,
+    "frameHeight": 120,
+    "frameCount": 4
+  },
+  "hero_coder_run": {
+    "path": "assets/sprites/heroes/coder_run.png",
+    "frameWidth": 69,
+    "frameHeight": 88,
+    "frameCount": 6
+  },
+  "hero_coder_jump": {
+    "path": "assets/sprites/heroes/coder_jump.png",
+    "frameWidth": 208,
+    "frameHeight": 89,
+    "frameCount": 2
+  },
+  "hero_coder_attack": {
+    "path": "assets/sprites/heroes/coder_attack.png",
+    "frameWidth": 104,
+    "frameHeight": 90,
+    "frameCount": 4
+  },
+  "hero_coder_ability": {
+    "path": "assets/sprites/heroes/coder_ability.png",
+    "frameWidth": 104,
+    "frameHeight": 96,
+    "frameCount": 4
+  },
+  "hero_coder_hurt": {
+    "path": "assets/sprites/heroes/coder_hurt.png",
+    "frameWidth": 208,
+    "frameHeight": 79,
+    "frameCount": 2
+  },
+  "hero_advocate_idle": {
+    "path": "assets/sprites/heroes/advocate_idle.png",
+    "frameWidth": 104,
+    "frameHeight": 120,
+    "frameCount": 4
+  },
+  "hero_advocate_run": {
+    "path": "assets/sprites/heroes/advocate_run.png",
+    "frameWidth": 69,
+    "frameHeight": 88,
+    "frameCount": 6
+  },
+  "hero_advocate_jump": {
+    "path": "assets/sprites/heroes/advocate_jump.png",
+    "frameWidth": 208,
+    "frameHeight": 89,
+    "frameCount": 2
+  },
+  "hero_advocate_attack": {
+    "path": "assets/sprites/heroes/advocate_attack.png",
+    "frameWidth": 104,
+    "frameHeight": 90,
+    "frameCount": 4
+  },
+  "hero_advocate_ability": {
+    "path": "assets/sprites/heroes/advocate_ability.png",
+    "frameWidth": 104,
+    "frameHeight": 96,
+    "frameCount": 4
+  },
+  "hero_advocate_hurt": {
+    "path": "assets/sprites/heroes/advocate_hurt.png",
+    "frameWidth": 208,
+    "frameHeight": 79,
+    "frameCount": 2
+  }
+}

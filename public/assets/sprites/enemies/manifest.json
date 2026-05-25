@@ -1,0 +1,242 @@
+{
+  "enemy_drone_idle": {
+    "path": "assets/sprites/enemies/drone_idle.png",
+    "frameWidth": 81,
+    "frameHeight": 44,
+    "frameCount": 2
+  },
+  "enemy_drone_move": {
+    "path": "assets/sprites/enemies/drone_move.png",
+    "frameWidth": 81,
+    "frameHeight": 46,
+    "frameCount": 4
+  },
+  "enemy_drone_attack": {
+    "path": "assets/sprites/enemies/drone_attack.png",
+    "frameWidth": 81,
+    "frameHeight": 46,
+    "frameCount": 4
+  },
+  "enemy_drone_hurt": {
+    "path": "assets/sprites/enemies/drone_hurt.png",
+    "frameWidth": 81,
+    "frameHeight": 42,
+    "frameCount": 2
+  },
+  "enemy_drone_defeat": {
+    "path": "assets/sprites/enemies/drone_defeat.png",
+    "frameWidth": 81,
+    "frameHeight": 43,
+    "frameCount": 2
+  },
+  "enemy_bruiser_idle": {
+    "path": "assets/sprites/enemies/bruiser_idle.png",
+    "frameWidth": 81,
+    "frameHeight": 44,
+    "frameCount": 2
+  },
+  "enemy_bruiser_move": {
+    "path": "assets/sprites/enemies/bruiser_move.png",
+    "frameWidth": 81,
+    "frameHeight": 46,
+    "frameCount": 4
+  },
+  "enemy_bruiser_attack": {
+    "path": "assets/sprites/enemies/bruiser_attack.png",
+    "frameWidth": 81,
+    "frameHeight": 46,
+    "frameCount": 4
+  },
+  "enemy_bruiser_hurt": {
+    "path": "assets/sprites/enemies/bruiser_hurt.png",
+    "frameWidth": 81,
+    "frameHeight": 42,
+    "frameCount": 2
+  },
+  "enemy_bruiser_defeat": {
+    "path": "assets/sprites/enemies/bruiser_defeat.png",
+    "frameWidth": 81,
+    "frameHeight": 43,
+    "frameCount": 2
+  },
+  "enemy_gatekeeper_idle": {
+    "path": "assets/sprites/enemies/gatekeeper_idle.png",
+    "frameWidth": 81,
+    "frameHeight": 44,
+    "frameCount": 2
+  },
+  "enemy_gatekeeper_move": {
+    "path": "assets/sprites/enemies/gatekeeper_move.png",
+    "frameWidth": 81,
+    "frameHeight": 46,
+    "frameCount": 4
+  },
+  "enemy_gatekeeper_attack": {
+    "path": "assets/sprites/enemies/gatekeeper_attack.png",
+    "frameWidth": 81,
+    "frameHeight": 46,
+    "frameCount": 4
+  },
+  "enemy_gatekeeper_hurt": {
+    "path": "assets/sprites/enemies/gatekeeper_hurt.png",
+    "frameWidth": 81,
+    "frameHeight": 42,
+    "frameCount": 2
+  },
+  "enemy_gatekeeper_defeat": {
+    "path": "assets/sprites/enemies/gatekeeper_defeat.png",
+    "frameWidth": 81,
+    "frameHeight": 43,
+    "frameCount": 2
+  },
+  "enemy_turret_idle": {
+    "path": "assets/sprites/enemies/turret_idle.png",
+    "frameWidth": 81,
+    "frameHeight": 44,
+    "frameCount": 2
+  },
+  "enemy_turret_move": {
+    "path": "assets/sprites/enemies/turret_move.png",
+    "frameWidth": 81,
+    "frameHeight": 46,
+    "frameCount": 4
+  },
+  "enemy_turret_attack": {
+    "path": "assets/sprites/enemies/turret_attack.png",
+    "frameWidth": 81,
+    "frameHeight": 46,
+    "frameCount": 4
+  },
+  "enemy_turret_hurt": {
+    "path": "assets/sprites/enemies/turret_hurt.png",
+    "frameWidth": 81,
+    "frameHeight": 42,
+    "frameCount": 2
+  },
+  "enemy_turret_defeat": {
+    "path": "assets/sprites/enemies/turret_defeat.png",
+    "frameWidth": 81,
+    "frameHeight": 43,
+    "frameCount": 2
+  },
+  "enemy_leech_idle": {
+    "path": "assets/sprites/enemies/leech_idle.png",
+    "frameWidth": 81,
+    "frameHeight": 44,
+    "frameCount": 2
+  },
+  "enemy_leech_move": {
+    "path": "assets/sprites/enemies/leech_move.png",
+    "frameWidth": 81,
+    "frameHeight": 46,
+    "frameCount": 4
+  },
+  "enemy_leech_attack": {
+    "path": "assets/sprites/enemies/leech_attack.png",
+    "frameWidth": 81,
+    "frameHeight": 46,
+    "frameCount": 4
+  },
+  "enemy_leech_hurt": {
+    "path": "assets/sprites/enemies/leech_hurt.png",
+    "frameWidth": 81,
+    "frameHeight": 42,
+    "frameCount": 2
+  },
+  "enemy_leech_defeat": {
+    "path": "assets/sprites/enemies/leech_defeat.png",
+    "frameWidth": 81,
+    "frameHeight": 43,
+    "frameCount": 2
+  },
+  "enemy_wisp_idle": {
+    "path": "assets/sprites/enemies/wisp_idle.png",
+    "frameWidth": 81,
+    "frameHeight": 44,
+    "frameCount": 2
+  },
+  "enemy_wisp_move": {
+    "path": "assets/sprites/enemies/wisp_move.png",
+    "frameWidth": 81,
+    "frameHeight": 46,
+    "frameCount": 4
+  },
+  "enemy_wisp_attack": {
+    "path": "assets/sprites/enemies/wisp_attack.png",
+    "frameWidth": 81,
+    "frameHeight": 46,
+    "frameCount": 4
+  },
+  "enemy_wisp_hurt": {
+    "path": "assets/sprites/enemies/wisp_hurt.png",
+    "frameWidth": 81,
+    "frameHeight": 42,
+    "frameCount": 2
+  },
+  "enemy_wisp_defeat": {
+    "path": "assets/sprites/enemies/wisp_defeat.png",
+    "frameWidth": 81,
+    "frameHeight": 43,
+    "frameCount": 2
+  },
+  "enemy_saboteur_idle": {
+    "path": "assets/sprites/enemies/saboteur_idle.png",
+    "frameWidth": 81,
+    "frameHeight": 44,
+    "frameCount": 2
+  },
+  "enemy_saboteur_move": {
+    "path": "assets/sprites/enemies/saboteur_move.png",
+    "frameWidth": 81,
+    "frameHeight": 46,
+    "frameCount": 4
+  },
+  "enemy_saboteur_attack": {
+    "path": "assets/sprites/enemies/saboteur_attack.png",
+    "frameWidth": 81,
+    "frameHeight": 46,
+    "frameCount": 4
+  },
+  "enemy_saboteur_hurt": {
+    "path": "assets/sprites/enemies/saboteur_hurt.png",
+    "frameWidth": 81,
+    "frameHeight": 42,
+    "frameCount": 2
+  },
+  "enemy_saboteur_defeat": {
+    "path": "assets/sprites/enemies/saboteur_defeat.png",
+    "frameWidth": 81,
+    "frameHeight": 43,
+    "frameCount": 2
+  },
+  "enemy_spike_trap_idle": {
+    "path": "assets/sprites/enemies/spike_trap_idle.png",
+    "frameWidth": 81,
+    "frameHeight": 44,
+    "frameCount": 2
+  },
+  "enemy_spike_trap_move": {
+    "path": "assets/sprites/enemies/spike_trap_move.png",
+    "frameWidth": 81,
+    "frameHeight": 46,
+    "frameCount": 4
+  },
+  "enemy_spike_trap_attack": {
+    "path": "assets/sprites/enemies/spike_trap_attack.png",
+    "frameWidth": 81,
+    "frameHeight": 46,
+    "frameCount": 4
+  },
+  "enemy_spike_trap_hurt": {
+    "path": "assets/sprites/enemies/spike_trap_hurt.png",
+    "frameWidth": 81,
+    "frameHeight": 42,
+    "frameCount": 2
+  },
+  "enemy_spike_trap_defeat": {
+    "path": "assets/sprites/enemies/spike_trap_defeat.png",
+    "frameWidth": 81,
+    "frameHeight": 43,
+    "frameCount": 2
+  }
+}

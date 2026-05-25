@@ -35,6 +35,13 @@ export class Boss extends Phaser.Physics.Arcade.Sprite {
   // Phase 2 threshold
   private readonly PHASE2_HP_RATIO = 0.45;
 
+  // Boss type → spritesheet file prefix
+  private static readonly FILE_PREFIX: Record<string, string> = {
+    accessDenier: 'access_denier',
+    algorithmicGatekeeper: 'algorithmic_gatekeeper',
+    blackoutWarden: 'blackout_warden',
+  };
+
   constructor(
     scene: Phaser.Scene,
     x: number,
@@ -42,8 +49,11 @@ export class Boss extends Phaser.Physics.Arcade.Sprite {
     data: BossData,
     projectileGroup?: Phaser.Physics.Arcade.Group
   ) {
-    const textureKey = `${data.type}_idle`;
-    super(scene, x, y, textureKey);
+    const filePrefix = Boss.FILE_PREFIX[data.type] ?? data.type;
+    const spritesheetKey = `boss_${filePrefix}_idle`;
+    const fallbackKey = `${data.type}_idle`;
+    const textureKey = scene.textures.exists(spritesheetKey) ? spritesheetKey : fallbackKey;
+    super(scene, x, y, textureKey, 0);
     this.bossData = data;
     this.hp = data.hp;
     this.projectileGroup = projectileGroup;
@@ -204,15 +214,16 @@ export class Boss extends Phaser.Physics.Arcade.Sprite {
       // Charge attack
       const dir = this.playerRef!.x > this.x ? 1 : -1;
       body.setVelocityX(dir * 350);
-      this.setTexture(`${this.bossData.type}_attack1`);
-      this.scene.time.delayedCall(500, () => { if (!this.isDefeated) body.setVelocityX(0); });
+      this.playBossAnim('attack');
+      this.scene.time.delayedCall(500, () => { if (!this.isDefeated) { body.setVelocityX(0); this.playBossAnim('idle'); } });
     } else if (this.currentAttack === 1) {
       // Shoot barricade bolts
+      this.playBossAnim('attack');
       this.shootSpread(3, 220);
     } else {
       // Stomp
       body.setVelocityY(-400);
-      this.setTexture(`${this.bossData.type}_attack2`);
+      this.playBossAnim('special');
       AudioSystem.playBossHit();
       this.effects.shakeCamera(0.015, 400);
     }
@@ -221,6 +232,7 @@ export class Boss extends Phaser.Physics.Arcade.Sprite {
   private gateKeeperAttack(): void {
     if (this.currentAttack === 0) {
       // Rotating lock beams - shoot radial burst
+      this.playBossAnim('attack');
       this.shootSpread(6, 200);
     } else if (this.currentAttack === 1) {
       // Beam attack toward player
@@ -240,6 +252,7 @@ export class Boss extends Phaser.Physics.Arcade.Sprite {
       }
     } else {
       // Code ring - expand ring of projectiles
+      this.playBossAnim('special');
       this.shootSpread(8, 180);
       this.effects.spawnRingPulse(this.x, this.y, 0x00FF88, 120);
     }
@@ -250,7 +263,7 @@ export class Boss extends Phaser.Physics.Arcade.Sprite {
     if (this.currentAttack === 0) {
       // Hammer slam
       body.setVelocityY(-500);
-      this.setTexture(`${this.bossData.type}_attack2`);
+      this.playBossAnim('special');
       this.scene.time.delayedCall(600, () => {
         if (!this.isDefeated) {
           this.effects.shakeCamera(0.02, 500);
@@ -260,6 +273,7 @@ export class Boss extends Phaser.Physics.Arcade.Sprite {
       });
     } else if (this.currentAttack === 1) {
       // Blackout pulse
+      this.playBossAnim('attack');
       this.effects.flashCamera(0x000000, 400);
       this.effects.shakeCamera(0.01, 300);
       this.shootSpread(5, 200);
@@ -267,8 +281,8 @@ export class Boss extends Phaser.Physics.Arcade.Sprite {
       // Charge
       const dir = this.playerRef!.x > this.x ? 1 : -1;
       body.setVelocityX(dir * 400);
-      this.setTexture(`${this.bossData.type}_attack1`);
-      this.scene.time.delayedCall(600, () => { if (!this.isDefeated) body.setVelocityX(0); });
+      this.playBossAnim('attack');
+      this.scene.time.delayedCall(600, () => { if (!this.isDefeated) { body.setVelocityX(0); this.playBossAnim('idle'); } });
     }
   }
 
@@ -368,9 +382,23 @@ export class Boss extends Phaser.Physics.Arcade.Sprite {
 
   private updateTexture(): void {
     if (this.isDefeated) return;
-    const key = `${this.bossData.type}_${this.phase === 'hurt' ? 'hurt' : 'idle'}`;
-    if (this.scene.textures.exists(key)) {
-      this.setTexture(key);
+    const suffix = this.phase === 'hurt' ? 'hurt' : 'idle';
+    const animKey = `${this.bossData.type}_${suffix}`;
+    if (this.scene.anims.exists(animKey)) {
+      this.anims.play(animKey, true);
+    } else {
+      // Fallback to single-frame texture
+      const legacyKey = `${this.bossData.type}_${suffix}`;
+      if (this.scene.textures.exists(legacyKey)) {
+        this.setTexture(legacyKey);
+      }
+    }
+  }
+
+  private playBossAnim(suffix: string): void {
+    const animKey = `${this.bossData.type}_${suffix}`;
+    if (this.scene.anims.exists(animKey)) {
+      this.anims.play(animKey, true);
     }
   }
 
