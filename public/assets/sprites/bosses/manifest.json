@@ -1,0 +1,92 @@
+{
+  "boss_access_denier_idle": {
+    "path": "assets/sprites/bosses/access_denier_idle.png",
+    "frameWidth": 96,
+    "frameHeight": 65,
+    "frameCount": 2
+  },
+  "boss_access_denier_move": {
+    "path": "assets/sprites/bosses/access_denier_move.png",
+    "frameWidth": 100,
+    "frameHeight": 52,
+    "frameCount": 4
+  },
+  "boss_access_denier_attack": {
+    "path": "assets/sprites/bosses/access_denier_attack.png",
+    "frameWidth": 100,
+    "frameHeight": 52,
+    "frameCount": 4
+  },
+  "boss_access_denier_special": {
+    "path": "assets/sprites/bosses/access_denier_special.png",
+    "frameWidth": 200,
+    "frameHeight": 52,
+    "frameCount": 2
+  },
+  "boss_access_denier_hurt": {
+    "path": "assets/sprites/bosses/access_denier_hurt.png",
+    "frameWidth": 100,
+    "frameHeight": 52,
+    "frameCount": 2
+  },
+  "boss_algorithmic_gatekeeper_idle": {
+    "path": "assets/sprites/bosses/algorithmic_gatekeeper_idle.png",
+    "frameWidth": 96,
+    "frameHeight": 65,
+    "frameCount": 2
+  },
+  "boss_algorithmic_gatekeeper_move": {
+    "path": "assets/sprites/bosses/algorithmic_gatekeeper_move.png",
+    "frameWidth": 100,
+    "frameHeight": 52,
+    "frameCount": 4
+  },
+  "boss_algorithmic_gatekeeper_attack": {
+    "path": "assets/sprites/bosses/algorithmic_gatekeeper_attack.png",
+    "frameWidth": 100,
+    "frameHeight": 52,
+    "frameCount": 4
+  },
+  "boss_algorithmic_gatekeeper_special": {
+    "path": "assets/sprites/bosses/algorithmic_gatekeeper_special.png",
+    "frameWidth": 200,
+    "frameHeight": 52,
+    "frameCount": 2
+  },
+  "boss_algorithmic_gatekeeper_hurt": {
+    "path": "assets/sprites/bosses/algorithmic_gatekeeper_hurt.png",
+    "frameWidth": 100,
+    "frameHeight": 52,
+    "frameCount": 2
+  },
+  "boss_blackout_warden_idle": {
+    "path": "assets/sprites/bosses/blackout_warden_idle.png",
+    "frameWidth": 96,
+    "frameHeight": 65,
+    "frameCount": 2
+  },
+  "boss_blackout_warden_move": {
+    "path": "assets/sprites/bosses/blackout_warden_move.png",
+    "frameWidth": 100,
+    "frameHeight": 52,
+    "frameCount": 4
+  },
+  "boss_blackout_warden_attack": {
+    "path": "assets/sprites/bosses/blackout_warden_attack.png",
+    "frameWidth": 100,
+    "frameHeight": 52,
+    "frameCount": 4
+  },
+  "boss_blackout_warden_special": {
+    "path": "assets/sprites/bosses/blackout_warden_special.png",
+    "frameWidth": 200,
+    "frameHeight": 52,
+    "frameCount": 2
+  },
+  "boss_blackout_warden_hurt": {
+    "path": "assets/sprites/bosses/blackout_warden_hurt.png",
+    "frameWidth": 100,
+    "frameHeight": 52,
+    "frameCount": 2
+  }
+}

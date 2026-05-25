@@ -1,0 +1,428 @@
+{
+  "enemy_drone_idle": {
+    "path": "assets/sprites/enemies/drone_idle.png",
+    "frameWidth": 319,
+    "frameHeight": 45,
+    "frameCount": 2
+  },
+  "enemy_drone_move": {
+    "path": "assets/sprites/enemies/drone_move.png",
+    "frameWidth": 159,
+    "frameHeight": 45,
+    "frameCount": 4
+  },
+  "enemy_drone_attack": {
+    "path": "assets/sprites/enemies/drone_attack.png",
+    "frameWidth": 159,
+    "frameHeight": 45,
+    "frameCount": 4
+  },
+  "enemy_drone_hurt": {
+    "path": "assets/sprites/enemies/drone_hurt.png",
+    "frameWidth": 319,
+    "frameHeight": 45,
+    "frameCount": 2
+  },
+  "enemy_drone_defeat": {
+    "path": "assets/sprites/enemies/drone_defeat.png",
+    "frameWidth": 319,
+    "frameHeight": 45,
+    "frameCount": 2
+  },
+  "enemy_leech_idle": {
+    "path": "assets/sprites/enemies/leech_idle.png",
+    "frameWidth": 319,
+    "frameHeight": 45,
+    "frameCount": 2
+  },
+  "enemy_leech_move": {
+    "path": "assets/sprites/enemies/leech_move.png",
+    "frameWidth": 159,
+    "frameHeight": 45,
+    "frameCount": 4
+  },
+  "enemy_leech_attack": {
+    "path": "assets/sprites/enemies/leech_attack.png",
+    "frameWidth": 159,
+    "frameHeight": 45,
+    "frameCount": 4
+  },
+  "enemy_leech_hurt": {
+    "path": "assets/sprites/enemies/leech_hurt.png",
+    "frameWidth": 319,
+    "frameHeight": 45,
+    "frameCount": 2
+  },
+  "enemy_leech_defeat": {
+    "path": "assets/sprites/enemies/leech_defeat.png",
+    "frameWidth": 319,
+    "frameHeight": 45,
+    "frameCount": 2
+  },
+  "enemy_bruiser_idle": {
+    "path": "assets/sprites/enemies/bruiser_idle.png",
+    "frameWidth": 319,
+    "frameHeight": 45,
+    "frameCount": 2
+  },
+  "enemy_bruiser_move": {
+    "path": "assets/sprites/enemies/bruiser_move.png",
+    "frameWidth": 159,
+    "frameHeight": 45,
+    "frameCount": 4
+  },
+  "enemy_bruiser_attack": {
+    "path": "assets/sprites/enemies/bruiser_attack.png",
+    "frameWidth": 159,
+    "frameHeight": 45,
+    "frameCount": 4
+  },
+  "enemy_bruiser_hurt": {
+    "path": "assets/sprites/enemies/bruiser_hurt.png",
+    "frameWidth": 319,
+    "frameHeight": 45,
+    "frameCount": 2
+  },
+  "enemy_bruiser_defeat": {
+    "path": "assets/sprites/enemies/bruiser_defeat.png",
+    "frameWidth": 319,
+    "frameHeight": 45,
+    "frameCount": 2
+  },
+  "enemy_wisp_idle": {
+    "path": "assets/sprites/enemies/wisp_idle.png",
+    "frameWidth": 319,
+    "frameHeight": 45,
+    "frameCount": 2
+  },
+  "enemy_wisp_move": {
+    "path": "assets/sprites/enemies/wisp_move.png",
+    "frameWidth": 159,
+    "frameHeight": 45,
+    "frameCount": 4
+  },
+  "enemy_wisp_attack": {
+    "path": "assets/sprites/enemies/wisp_attack.png",
+    "frameWidth": 159,
+    "frameHeight": 45,
+    "frameCount": 4
+  },
+  "enemy_wisp_hurt": {
+    "path": "assets/sprites/enemies/wisp_hurt.png",
+    "frameWidth": 319,
+    "frameHeight": 45,
+    "frameCount": 2
+  },
+  "enemy_wisp_defeat": {
+    "path": "assets/sprites/enemies/wisp_defeat.png",
+    "frameWidth": 319,
+    "frameHeight": 45,
+    "frameCount": 2
+  },
+  "enemy_gatekeeper_idle": {
+    "path": "assets/sprites/enemies/gatekeeper_idle.png",
+    "frameWidth": 319,
+    "frameHeight": 45,
+    "frameCount": 2
+  },
+  "enemy_gatekeeper_move": {
+    "path": "assets/sprites/enemies/gatekeeper_move.png",
+    "frameWidth": 159,
+    "frameHeight": 45,
+    "frameCount": 4
+  },
+  "enemy_gatekeeper_attack": {
+    "path": "assets/sprites/enemies/gatekeeper_attack.png",
+    "frameWidth": 159,
+    "frameHeight": 45,
+    "frameCount": 4
+  },
+  "enemy_gatekeeper_hurt": {
+    "path": "assets/sprites/enemies/gatekeeper_hurt.png",
+    "frameWidth": 319,
+    "frameHeight": 45,
+    "frameCount": 2
+  },
+  "enemy_gatekeeper_defeat": {
+    "path": "assets/sprites/enemies/gatekeeper_defeat.png",
+    "frameWidth": 319,
+    "frameHeight": 45,
+    "frameCount": 2
+  },
+  "enemy_saboteur_idle": {
+    "path": "assets/sprites/enemies/saboteur_idle.png",
+    "frameWidth": 319,
+    "frameHeight": 45,
+    "frameCount": 2
+  },
+  "enemy_saboteur_move": {
+    "path": "assets/sprites/enemies/saboteur_move.png",
+    "frameWidth": 159,
+    "frameHeight": 45,
+    "frameCount": 4
+  },
+  "enemy_saboteur_attack": {
+    "path": "assets/sprites/enemies/saboteur_attack.png",
+    "frameWidth": 159,
+    "frameHeight": 45,
+    "frameCount": 4
+  },
+  "enemy_saboteur_hurt": {
+    "path": "assets/sprites/enemies/saboteur_hurt.png",
+    "frameWidth": 319,
+    "frameHeight": 45,
+    "frameCount": 2
+  },
+  "enemy_saboteur_defeat": {
+    "path": "assets/sprites/enemies/saboteur_defeat.png",
+    "frameWidth": 319,
+    "frameHeight": 45,
+    "frameCount": 2
+  },
+  "enemy_turret_idle": {
+    "path": "assets/sprites/enemies/turret_idle.png",
+    "frameWidth": 319,
+    "frameHeight": 45,
+    "frameCount": 2
+  },
+  "enemy_turret_move": {
+    "path": "assets/sprites/enemies/turret_move.png",
+    "frameWidth": 159,
+    "frameHeight": 45,
+    "frameCount": 4
+  },
+  "enemy_turret_attack": {
+    "path": "assets/sprites/enemies/turret_attack.png",
+    "frameWidth": 159,
+    "frameHeight": 45,
+    "frameCount": 4
+  },
+  "enemy_turret_hurt": {
+    "path": "assets/sprites/enemies/turret_hurt.png",
+    "frameWidth": 319,
+    "frameHeight": 45,
+    "frameCount": 2
+  },
+  "enemy_turret_defeat": {
+    "path": "assets/sprites/enemies/turret_defeat.png",
+    "frameWidth": 319,
+    "frameHeight": 45,
+    "frameCount": 2
+  },
+  "enemy_spike_trap_idle": {
+    "path": "assets/sprites/enemies/spike_trap_idle.png",
+    "frameWidth": 319,
+    "frameHeight": 45,
+    "frameCount": 2
+  },
+  "enemy_spike_trap_move": {
+    "path": "assets/sprites/enemies/spike_trap_move.png",
+    "frameWidth": 159,
+    "frameHeight": 45,
+    "frameCount": 4
+  },
+  "enemy_spike_trap_attack": {
+    "path": "assets/sprites/enemies/spike_trap_attack.png",
+    "frameWidth": 159,
+    "frameHeight": 45,
+    "frameCount": 4
+  },
+  "enemy_spike_trap_hurt": {
+    "path": "assets/sprites/enemies/spike_trap_hurt.png",
+    "frameWidth": 319,
+    "frameHeight": 45,
+    "frameCount": 2
+  },
+  "enemy_spike_trap_defeat": {
+    "path": "assets/sprites/enemies/spike_trap_defeat.png",
+    "frameWidth": 319,
+    "frameHeight": 45,
+    "frameCount": 2
+  },
+  "boss_access_denier_idle": {
+    "path": "assets/sprites/bosses/access_denier_idle.png",
+    "frameWidth": 688,
+    "frameHeight": 50,
+    "frameCount": 2
+  },
+  "boss_access_denier_move": {
+    "path": "assets/sprites/bosses/access_denier_move.png",
+    "frameWidth": 344,
+    "frameHeight": 50,
+    "frameCount": 4
+  },
+  "boss_access_denier_attack": {
+    "path": "assets/sprites/bosses/access_denier_attack.png",
+    "frameWidth": 344,
+    "frameHeight": 50,
+    "frameCount": 4
+  },
+  "boss_access_denier_special": {
+    "path": "assets/sprites/bosses/access_denier_special.png",
+    "frameWidth": 688,
+    "frameHeight": 50,
+    "frameCount": 2
+  },
+  "boss_access_denier_hurt": {
+    "path": "assets/sprites/bosses/access_denier_hurt.png",
+    "frameWidth": 688,
+    "frameHeight": 50,
+    "frameCount": 2
+  },
+  "boss_algorithmic_gatekeeper_idle": {
+    "path": "assets/sprites/bosses/algorithmic_gatekeeper_idle.png",
+    "frameWidth": 688,
+    "frameHeight": 50,
+    "frameCount": 2
+  },
+  "boss_algorithmic_gatekeeper_move": {
+    "path": "assets/sprites/bosses/algorithmic_gatekeeper_move.png",
+    "frameWidth": 344,
+    "frameHeight": 50,
+    "frameCount": 4
+  },
+  "boss_algorithmic_gatekeeper_attack": {
+    "path": "assets/sprites/bosses/algorithmic_gatekeeper_attack.png",
+    "frameWidth": 344,
+    "frameHeight": 50,
+    "frameCount": 4
+  },
+  "boss_algorithmic_gatekeeper_special": {
+    "path": "assets/sprites/bosses/algorithmic_gatekeeper_special.png",
+    "frameWidth": 688,
+    "frameHeight": 50,
+    "frameCount": 2
+  },
+  "boss_algorithmic_gatekeeper_hurt": {
+    "path": "assets/sprites/bosses/algorithmic_gatekeeper_hurt.png",
+    "frameWidth": 688,
+    "frameHeight": 50,
+    "frameCount": 2
+  },
+  "boss_blackout_warden_idle": {
+    "path": "assets/sprites/bosses/blackout_warden_idle.png",
+    "frameWidth": 688,
+    "frameHeight": 50,
+    "frameCount": 2
+  },
+  "boss_blackout_warden_move": {
+    "path": "assets/sprites/bosses/blackout_warden_move.png",
+    "frameWidth": 344,
+    "frameHeight": 50,
+    "frameCount": 4
+  },
+  "boss_blackout_warden_attack": {
+    "path": "assets/sprites/bosses/blackout_warden_attack.png",
+    "frameWidth": 344,
+    "frameHeight": 50,
+    "frameCount": 4
+  },
+  "boss_blackout_warden_special": {
+    "path": "assets/sprites/bosses/blackout_warden_special.png",
+    "frameWidth": 688,
+    "frameHeight": 50,
+    "frameCount": 2
+  },
+  "boss_blackout_warden_hurt": {
+    "path": "assets/sprites/bosses/blackout_warden_hurt.png",
+    "frameWidth": 688,
+    "frameHeight": 50,
+    "frameCount": 2
+  },
+  "collectible_token": {
+    "path": "assets/sprites/collectibles/token.png",
+    "frameWidth": 87,
+    "frameHeight": 90,
+    "frameCount": 2
+  },
+  "collectible_token_stack": {
+    "path": "assets/sprites/collectibles/token_stack.png",
+    "frameWidth": 87,
+    "frameHeight": 90,
+    "frameCount": 2
+  },
+  "collectible_ai_scroll": {
+    "path": "assets/sprites/collectibles/ai_scroll.png",
+    "frameWidth": 87,
+    "frameHeight": 90,
+    "frameCount": 2
+  },
+  "collectible_creator_badge": {
+    "path": "assets/sprites/collectibles/creator_badge.png",
+    "frameWidth": 87,
+    "frameHeight": 90,
+    "frameCount": 2
+  },
+  "collectible_patch_battery": {
+    "path": "assets/sprites/collectibles/patch_battery.png",
+    "frameWidth": 87,
+    "frameHeight": 90,
+    "frameCount": 2
+  },
+  "collectible_beacon_ember": {
+    "path": "assets/sprites/collectibles/beacon_ember.png",
+    "frameWidth": 87,
+    "frameHeight": 90,
+    "frameCount": 2
+  },
+  "collectible_health_pack": {
+    "path": "assets/sprites/collectibles/health_pack.png",
+    "frameWidth": 87,
+    "frameHeight": 90,
+    "frameCount": 2
+  },
+  "collectible_signal_shield": {
+    "path": "assets/sprites/collectibles/signal_shield.png",
+    "frameWidth": 87,
+    "frameHeight": 90,
+    "frameCount": 2
+  },
+  "collectible_library_pass": {
+    "path": "assets/sprites/collectibles/library_pass.png",
+    "frameWidth": 87,
+    "frameHeight": 90,
+    "frameCount": 2
+  },
+  "collectible_community_key": {
+    "path": "assets/sprites/collectibles/community_key.png",
+    "frameWidth": 87,
+    "frameHeight": 90,
+    "frameCount": 2
+  },
+  "collectible_broadband_chip": {
+    "path": "assets/sprites/collectibles/broadband_chip.png",
+    "frameWidth": 87,
+    "frameHeight": 90,
+    "frameCount": 2
+  },
+  "collectible_hidden_lore": {
+    "path": "assets/sprites/collectibles/hidden_lore.png",
+    "frameWidth": 87,
+    "frameHeight": 90,
+    "frameCount": 2
+  },
+  "collectible_empowerment_shard": {
+    "path": "assets/sprites/collectibles/empowerment_shard.png",
+    "frameWidth": 87,
+    "frameHeight": 90,
+    "frameCount": 2
+  },
+  "collectible_extra_life": {
+    "path": "assets/sprites/collectibles/extra_life.png",
+    "frameWidth": 87,
+    "frameHeight": 90,
+    "frameCount": 2
+  },
+  "collectible_checkpoint_orb": {
+    "path": "assets/sprites/collectibles/checkpoint_orb.png",
+    "frameWidth": 87,
+    "frameHeight": 90,
+    "frameCount": 2
+  },
+  "collectible_challenge_key": {
+    "path": "assets/sprites/collectibles/challenge_key.png",
+    "frameWidth": 87,
+    "frameHeight": 90,
+    "frameCount": 2
+  }
+}

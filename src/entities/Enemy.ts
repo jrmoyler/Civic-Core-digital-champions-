@@ -17,6 +17,7 @@ const TEXTURE_MAP: Record<string, string> = {
   gatekeeperBot: 'gatekeeper',
   signalSaboteur: 'saboteur',
   glitchTurret: 'turret',
+  dataSpikeHazard: 'spike_trap',
 };
 
 export class Enemy extends Phaser.Physics.Arcade.Sprite {
@@ -48,7 +49,10 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     projectileGroup?: Phaser.Physics.Arcade.Group
   ) {
     const prefix = TEXTURE_MAP[data.type] ?? 'drone';
-    super(scene, x, y, `${prefix}_idle`);
+    // Use spritesheet texture if available, otherwise fall back to static texture
+    const spritesheetKey = `enemy_${prefix}_idle`;
+    const initialTexture = scene.textures.exists(spritesheetKey) ? spritesheetKey : `${prefix}_idle`;
+    super(scene, x, y, initialTexture, 0);
     this.enemyData = data;
     this.hp = data.hp;
     this.spawnX = x;
@@ -61,7 +65,10 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     this.setDepth(DEPTH.ENEMIES);
 
     const body = this.body as Phaser.Physics.Arcade.Body;
-    body.setSize(data.width, data.height);
+    // Use sprite-accurate hitbox for spritesheet-based enemies (81x44 frames → 60x34 body)
+    const bodyWidth = data.width > 0 ? data.width : 60;
+    const bodyHeight = data.height > 0 ? data.height : 34;
+    body.setSize(bodyWidth, bodyHeight);
     body.setCollideWorldBounds(true);
 
     if (data.isFlying) {
@@ -86,7 +93,7 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     this.updateTimers(delta);
     this.updateAI(delta);
     this.updateHealthBar();
-    this.updateTexture();
+    this.updateAnimation(this.enemyState);
   }
 
   private updateTimers(delta: number): void {
@@ -268,6 +275,34 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
   private updateHealthBar(): void {
     this.healthBar.update(this.hp, this.enemyData.hp);
     this.healthBar.setPosition(this.x - this.enemyData.width / 2, this.y - this.enemyData.height / 2 - 14);
+  }
+
+  private updateAnimation(state: EnemyState): void {
+    const prefix = TEXTURE_MAP[this.enemyData.type] ?? 'drone';
+    let suffix = 'idle';
+
+    if (state === 'hurt') {
+      suffix = 'hurt';
+    } else if (state === 'attack') {
+      suffix = 'attack';
+    } else if (state === 'dead') {
+      suffix = 'defeat';
+    } else if (state === 'chase' || state === 'patrol') {
+      // Flying enemies and patrolling ones use move when moving, idle when still
+      const body = this.body as Phaser.Physics.Arcade.Body;
+      const isMoving = Math.abs(body.velocity.x) > 5 || Math.abs(body.velocity.y) > 5;
+      suffix = isMoving ? 'move' : 'idle';
+    }
+
+    const animKey = `${prefix}_${suffix}`;
+
+    // Play spritesheet animation if available
+    if (this.scene.anims.exists(animKey)) {
+      this.anims.play(animKey, true);
+    } else {
+      // Fallback to static texture
+      this.updateTexture();
+    }
   }
 
   private updateTexture(): void {

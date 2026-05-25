@@ -50,8 +50,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   }
 
   constructor(scene: Phaser.Scene, x: number, y: number, heroData: HeroData) {
-    const textureKey = `${heroData.id}_idle`;
-    super(scene, x, y, textureKey);
+    // Use the spritesheet texture for animated hero; frame 0 is the first idle frame
+    super(scene, x, y, `hero_${heroData.id}_idle`, 0);
     this.heroData = heroData;
     this.hp = heroData.hp;
     this.maxHp = heroData.hp;
@@ -62,10 +62,10 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.setDepth(DEPTH.PLAYER);
     this.setCollideWorldBounds(true);
 
-    // Physics body size
+    // Physics body size adjusted for the larger spritesheet frames (104x120 idle)
     if (this.body) {
-      (this.body as Phaser.Physics.Arcade.Body).setSize(28, 50);
-      (this.body as Phaser.Physics.Arcade.Body).setOffset(6, 6);
+      (this.body as Phaser.Physics.Arcade.Body).setSize(32, 90);
+      (this.body as Phaser.Physics.Arcade.Body).setOffset(36, 10);
       (this.body as Phaser.Physics.Arcade.Body).setGravityY(0); // Scene handles gravity
     }
 
@@ -205,29 +205,38 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
   private updateAnimation(): void {
     const body = this.body as Phaser.Physics.Arcade.Body;
-    let frame = 'idle';
+    const id = this.heroData.id;
+    let animSuffix = 'idle';
 
-    if (this.playerState === 'dead') {
-      frame = 'hurt';
-    } else if (this.playerState === 'hurt') {
-      frame = 'hurt';
+    if (this.playerState === 'dead' || this.playerState === 'hurt') {
+      animSuffix = 'hurt';
     } else if (this.playerState === 'attack') {
-      frame = 'attack';
+      animSuffix = 'attack';
     } else if (this.playerState === 'ability') {
-      frame = 'ability';
+      animSuffix = 'ability';
     } else if (!this.isGrounded) {
-      frame = 'jump';
+      animSuffix = 'jump';
     } else if (Math.abs(body.velocity.x) > 20) {
-      // Alternate between run1 and run2
-      frame = Math.floor(Date.now() / 150) % 2 === 0 ? 'run1' : 'run2';
+      animSuffix = 'run';
     } else {
-      frame = 'idle';
+      animSuffix = 'idle';
     }
 
-    const textureKey = `${this.heroData.id}_${frame}`;
-    if (this.scene.textures.exists(textureKey)) {
-      this.setTexture(textureKey);
+    const animKey = `${id}_${animSuffix}`;
+
+    // Play spritesheet animation if available; otherwise fall back to static TextureFactory texture
+    if (this.scene.anims.exists(animKey)) {
+      this.anims.play(animKey, true);
+    } else {
+      // Fallback: use static TextureFactory texture key
+      const fallbackKey = `${id}_${animSuffix}`;
+      if (this.scene.textures.exists(fallbackKey)) {
+        this.setTexture(fallbackKey);
+      }
     }
+
+    // Always keep flip direction correct
+    this.setFlipX(!this.facingRight);
   }
 
   /** Called when player takes damage */

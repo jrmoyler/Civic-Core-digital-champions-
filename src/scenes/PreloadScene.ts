@@ -7,6 +7,7 @@ import Phaser from 'phaser';
 import { SCENE_KEYS, COLORS, GAME_WIDTH, GAME_HEIGHT } from '../game/constants';
 import { ASSETS, ASSET_KEYS } from '../assets/assetManifest';
 import { TextureFactory } from '../systems/TextureFactory';
+import { SpriteLoader } from '../systems/SpriteLoader';
 
 export class PreloadScene extends Phaser.Scene {
   private loadBar!: Phaser.GameObjects.Graphics;
@@ -112,11 +113,17 @@ export class PreloadScene extends Phaser.Scene {
         this.missingAssets.push(asset.key);
       }
     }
+
+    // Load all hero, enemy, and boss spritesheets
+    SpriteLoader.preload(this);
   }
 
   create(): void {
     // Generate all programmatic textures
     TextureFactory.generateAll(this);
+
+    // Create all sprite animations from loaded spritesheets
+    SpriteLoader.createAnimations(this);
 
     // Show missing asset warnings if any
     if (this.missingAssets.length > 0) {
