@@ -1,24 +1,27 @@
 // ============================================================
 // CIVIC CORE: DIGITAL CHAMPIONS — Checkpoint Entity
+// Physics: Matter.js static sensor
 // ============================================================
 
 import Phaser from 'phaser';
-import { DEPTH } from '../game/constants';
+import { DEPTH, COLLISION_CATEGORIES } from '../game/constants';
 
-export class Checkpoint extends Phaser.Physics.Arcade.Sprite {
+export class Checkpoint extends Phaser.Physics.Matter.Sprite {
   public activated: boolean = false;
 
   constructor(scene: Phaser.Scene, x: number, y: number) {
-    super(scene, x, y, 'checkpoint_idle');
+    super(scene.matter.world, x, y, 'checkpoint_idle', 0, {
+      label: 'checkpoint',
+      isSensor: true,
+      isStatic: true,
+      collisionFilter: {
+        category: COLLISION_CATEGORIES.COLLECTIBLE,
+        mask: COLLISION_CATEGORIES.PLAYER,
+      },
+    });
+
     scene.add.existing(this);
-    scene.physics.add.existing(this);
-
     this.setDepth(DEPTH.COLLECTIBLES + 1);
-
-    const body = this.body as Phaser.Physics.Arcade.Body;
-    body.setAllowGravity(false);
-    body.setImmovable(true);
-    body.setSize(30, 72);
   }
 
   activate(): void {
@@ -29,7 +32,12 @@ export class Checkpoint extends Phaser.Physics.Arcade.Sprite {
       this.setTexture('checkpoint_active');
     }
 
-    // Glow pulse
+    // Phaser FX glow burst (WebGL only)
+    if (this.scene.game.renderer.type === Phaser.WEBGL) {
+      const glow = this.postFX.addGlow(0x00ffff, 8, 0, false, 0.1, 16);
+      this.scene.time.delayedCall(600, () => this.postFX.remove(glow));
+    }
+
     this.scene.tweens.add({
       targets: this,
       scaleX: { from: 1, to: 1.15, yoyo: true },
