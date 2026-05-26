@@ -27,7 +27,7 @@ const ZONE_NODES: ZoneNode[] = [
     name: 'COMMUNITY COMMONS',
     subtitle: 'Zone 1 — Where every voice builds',
     x: 260,
-    y: 360,
+    y: 420,
     bgKey: ASSET_KEYS.ZONE1_BLANK,
     color: COLORS.ZONE1_PRIMARY,
     accentColor: COLORS.ZONE1_SECONDARY,
@@ -38,7 +38,7 @@ const ZONE_NODES: ZoneNode[] = [
     name: 'PUBLIC ACCESS INTELLIGENCE',
     subtitle: 'Zone 2 — The network belongs to all',
     x: 640,
-    y: 280,
+    y: 320,
     bgKey: ASSET_KEYS.ZONE2_BLANK,
     color: COLORS.ZONE2_PRIMARY,
     accentColor: COLORS.ZONE2_SECONDARY,
@@ -49,7 +49,7 @@ const ZONE_NODES: ZoneNode[] = [
     name: 'EMPOWERMENT HEIGHTS',
     subtitle: 'Zone 3 — The Core Beacon shines for all',
     x: 1020,
-    y: 200,
+    y: 240,
     bgKey: ASSET_KEYS.ZONE3_BLANK,
     color: COLORS.ZONE3_PRIMARY,
     accentColor: COLORS.ZONE3_SECONDARY,
@@ -144,9 +144,6 @@ export class WorldMapScene extends Phaser.Scene {
   private buildMapNodes(): void {
     ZONE_NODES.forEach((zone, i) => {
       const unlocked = this.state.isZoneUnlocked(zone.id);
-      const completed = this.state.unlockedZones.includes(
-        i < ZONE_NODES.length - 1 ? ZONE_NODES[i + 1].id : 'zone3'
-      );
 
       // Node background ring
       const ring = this.add.graphics();
@@ -164,11 +161,12 @@ export class WorldMapScene extends Phaser.Scene {
         zoneImg.setDisplaySize(108, 108);
         zoneImg.setAlpha(unlocked ? 0.8 : 0.2);
 
-        // Circular crop mask
+        // Circular crop mask — hide maskShape so it doesn't render as a visible white circle
         const maskShape = this.add.graphics();
         maskShape.fillStyle(0xffffff);
         maskShape.fillCircle(zone.x, zone.y, 54);
         const mask = maskShape.createGeometryMask();
+        maskShape.setVisible(false);
         zoneImg.setMask(mask);
       }
 
@@ -230,7 +228,10 @@ export class WorldMapScene extends Phaser.Scene {
 
       // Interactive zone
       if (unlocked) {
-        const clickZone = this.add.circle(zone.x, zone.y, 65).setInteractive({ useHandCursor: true });
+        const clickZone = this.add
+          .circle(zone.x, zone.y, 65)
+          .setInteractive({ useHandCursor: true })
+          .setDepth(10);
 
         clickZone.on('pointerover', () => {
           ring.clear();
@@ -249,7 +250,7 @@ export class WorldMapScene extends Phaser.Scene {
           ring.fillCircle(zone.x, zone.y, 62);
         });
 
-        clickZone.on('pointerup', () => {
+        clickZone.on('pointerdown', () => {
           this.launchZone(zone.id);
         });
       }
@@ -361,7 +362,7 @@ export class WorldMapScene extends Phaser.Scene {
       fontFamily: 'monospace',
     }).setOrigin(0.5, 0.5).setInteractive({ useHandCursor: true });
 
-    backBtn.on('pointerup', () => {
+    backBtn.on('pointerdown', () => {
       AudioSystem.playMenuSelect();
       this.scene.start(SCENE_KEYS.MAIN_MENU);
     });
