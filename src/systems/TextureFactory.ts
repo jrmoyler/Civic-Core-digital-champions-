@@ -20,9 +20,9 @@ export class TextureFactory {
    */
   static generateAll(scene: Phaser.Scene): void {
     // Heroes
-    TextureFactory.genHero(scene, 'creator', COLORS.CREATOR_PRIMARY, COLORS.CREATOR_SECONDARY);
-    TextureFactory.genHero(scene, 'coder', COLORS.CODER_PRIMARY, COLORS.CODER_SECONDARY);
-    TextureFactory.genHero(scene, 'advocate', COLORS.ADVOCATE_PRIMARY, COLORS.ADVOCATE_SECONDARY);
+    TextureFactory.genHero(scene, 'communityCreator', COLORS.CREATOR_PRIMARY, COLORS.CREATOR_SECONDARY);
+    TextureFactory.genHero(scene, 'civicCoder', COLORS.CODER_PRIMARY, COLORS.CODER_SECONDARY);
+    TextureFactory.genHero(scene, 'digitalEquityAdvocate', COLORS.ADVOCATE_PRIMARY, COLORS.ADVOCATE_SECONDARY);
 
     // Enemies
     TextureFactory.genDrone(scene);
@@ -59,9 +59,9 @@ export class TextureFactory {
     TextureFactory.genProjectile(scene, 'proj_ability', 0x44FFCC, 8, 8);
 
     // Ability effects
-    TextureFactory.genAbilityEffect(scene, 'creator', COLORS.CREATOR_PRIMARY);
-    TextureFactory.genAbilityEffect(scene, 'coder', COLORS.CODER_PRIMARY);
-    TextureFactory.genAbilityEffect(scene, 'advocate', COLORS.ADVOCATE_PRIMARY);
+    TextureFactory.genAbilityEffect(scene, 'communityCreator', COLORS.CREATOR_PRIMARY);
+    TextureFactory.genAbilityEffect(scene, 'civicCoder', COLORS.CODER_PRIMARY);
+    TextureFactory.genAbilityEffect(scene, 'digitalEquityAdvocate', COLORS.ADVOCATE_PRIMARY);
   }
 
   // ── Hero generation ────────────────────────────────────────

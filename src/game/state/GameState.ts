@@ -10,7 +10,7 @@ export class GameState {
   private static instance: GameState;
 
   // Session state
-  public selectedHero: HeroId = 'creator';
+  public selectedHero: HeroId = 'communityCreator';
   public currentZone: ZoneId = 'zone1';
   public tokensCollected: number = 0;
   public scrollsCollected: number = 0;

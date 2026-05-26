@@ -7,7 +7,7 @@ import { SCENE_KEYS, GAME_WIDTH, GAME_HEIGHT, COLORS } from '../game/constants';
 import { ASSET_KEYS } from '../assets/assetManifest';
 import { GameState } from '../game/state/GameState';
 import { AudioSystem } from '../systems/AudioSystem';
-import type { ZoneId } from '../game/types';
+import { ZoneId, HeroId, getAvatarKeyForHero } from '../game/types';
 
 interface ZoneNode {
   id: ZoneId;
@@ -251,70 +251,101 @@ export class WorldMapScene extends Phaser.Scene {
     });
   }
 
+
   private buildHeroDisplay(): void {
-    const state = GameState.getInstance();
-    const heroId = state.selectedHero;
+    const heroId = this.state.selectedHero || 'communityCreator';
+    const heroNameMap: Record<HeroId, string> = {
+      communityCreator: 'Community Creator',
+      civicCoder: 'Civic Coder',
+      digitalEquityAdvocate: 'Digital Equity Advocate',
+    };
 
-    // Hero panel bottom-left
+    // Hero stats panel (top-left)
     const panel = this.add.graphics();
-    panel.fillStyle(0x0a0e1c, 0.85);
-    panel.fillRoundedRect(40, GAME_HEIGHT - 120, 280, 90, 8);
-    panel.lineStyle(2, COLORS.UI_ACCENT, 0.4);
-    panel.strokeRoundedRect(40, GAME_HEIGHT - 120, 280, 90, 8);
+    panel.fillStyle(0x050810, 0.9);
+    panel.fillRoundedRect(20, 20, 240, 80, 8);
+    panel.lineStyle(2, COLORS.UI_BORDER, 0.6);
+    panel.strokeRoundedRect(20, 20, 240, 80, 8);
 
-    // Hero sprite
-    const heroKey = `${heroId}_idle`;
-    if (this.textures.exists(heroKey)) {
-      const heroSprite = this.add.image(82, GAME_HEIGHT - 75, heroKey);
-      heroSprite.setDisplaySize(44, 60);
+    const avatarKey = getAvatarKeyForHero(heroId);
+
+    // Portrait
+    if (this.textures.exists(avatarKey)) {
+      const portrait = this.add.image(60, 60, avatarKey);
+
+      // Calculate scaling to fit 64x64
+      const texW = portrait.width || 100;
+      const texH = portrait.height || 100;
+      const scale = Math.min(64 / texW, 64 / texH);
+
+      portrait.setScale(scale);
+      portrait.texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
+    } else {
+      const fallback = this.add.graphics();
+      fallback.fillStyle(0x4A90D9, 1);
+      fallback.fillRect(36, 36, 48, 48);
     }
 
-    this.add.text(108, GAME_HEIGHT - 106, 'CHAMPION', {
-      fontSize: '11px',
-      color: '#446688',
+    this.add.text(94, 30, 'CURRENT CHAMPION', {
+      fontSize: '10px',
+      color: '#778899',
       fontFamily: 'monospace',
     });
 
-    const heroNames: Record<string, string> = {
-      creator: 'Community Creator',
-      coder: 'Civic Coder',
-      advocate: 'Digital Equity Advocate',
-    };
-
-    this.add.text(108, GAME_HEIGHT - 90, heroNames[heroId] ?? heroId, {
+    this.add.text(94, 46, heroNameMap[heroId].toUpperCase(), {
       fontSize: '14px',
       color: '#ffffff',
       fontFamily: 'monospace',
       fontStyle: 'bold',
+      wordWrap: { width: 140 },
     });
 
-    // Change hero button
-    const changeBtn = this.add.text(108, GAME_HEIGHT - 68, '← Change Hero', {
-      fontSize: '12px',
-      color: '#F5A623',
-      fontFamily: 'monospace',
-    }).setInteractive({ useHandCursor: true });
+    // Add map avatar marker over the highest unlocked node
+    let currentNode = ZONE_NODES[0];
+    for (let i = ZONE_NODES.length - 1; i >= 0; i--) {
+      if (this.state.isZoneUnlocked(ZONE_NODES[i].id)) {
+        currentNode = ZONE_NODES[i];
+        break;
+      }
+    }
 
-    changeBtn.on('pointerup', () => {
-      AudioSystem.playMenuSelect();
-      this.scene.start(SCENE_KEYS.CHAR_SELECT);
-    });
-    changeBtn.on('pointerover', () => changeBtn.setScale(1.05));
-    changeBtn.on('pointerout', () => changeBtn.setScale(1));
+    // Shadow
+    const shadow = this.add.graphics();
+    shadow.fillStyle(0x000000, 0.4);
+    shadow.fillEllipse(currentNode.x, currentNode.y + 40, 48, 16);
 
-    // Dev unlock all button
-    const devBtn = this.add.text(GAME_WIDTH - 40, GAME_HEIGHT - 36, '[DEV: UNLOCK ALL]', {
-      fontSize: '11px',
-      color: '#223344',
-      fontFamily: 'monospace',
-    }).setOrigin(1, 0.5).setInteractive({ useHandCursor: true });
+    // Avatar
+    if (this.textures.exists(avatarKey)) {
+      const avatar = this.add.image(currentNode.x, currentNode.y, avatarKey);
 
-    devBtn.on('pointerup', () => {
-      state.devUnlockAll = true;
-      this.scene.restart();
-    });
-    devBtn.on('pointerover', () => devBtn.setColor('#446688'));
-    devBtn.on('pointerout', () => devBtn.setColor('#223344'));
+      const texW = avatar.width || 100;
+      const texH = avatar.height || 100;
+      const scale = Math.min(100 / texW, 100 / texH);
+
+      avatar.setScale(scale);
+      avatar.texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
+
+      // Bob animation
+      this.tweens.add({
+        targets: avatar,
+        y: avatar.y - 8,
+        duration: 900,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.inOut'
+      });
+
+      // Shadow bob
+      this.tweens.add({
+        targets: shadow,
+        scaleX: 0.8,
+        scaleY: 0.8,
+        duration: 900,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.inOut'
+      });
+    }
   }
 
   private buildNavigation(): void {

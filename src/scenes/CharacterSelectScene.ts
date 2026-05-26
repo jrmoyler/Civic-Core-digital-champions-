@@ -1,20 +1,29 @@
-// ============================================================
-// CIVIC CORE: DIGITAL CHAMPIONS — Character Select Scene
-// ============================================================
-
 import Phaser from 'phaser';
-import { SCENE_KEYS, GAME_WIDTH, GAME_HEIGHT, COLORS } from '../game/constants';
+import { SCENE_KEYS, COLORS, GAME_WIDTH, GAME_HEIGHT } from '../game/constants';
 import { ASSET_KEYS } from '../assets/assetManifest';
-import { HEROES } from '../data/heroes';
-import { GameState } from '../game/state/GameState';
 import { AudioSystem } from '../systems/AudioSystem';
-import type { HeroId } from '../game/types';
+import { GameState } from '../game/state/GameState';
+import { HeroId } from '../game/types';
+
+const SHOW_SELECTION_OVERLAY = true;
 
 export class CharacterSelectScene extends Phaser.Scene {
-  private selectedIndex: number = 0;
   private state!: GameState;
-  private heroCards: Phaser.GameObjects.Container[] = [];
-  private detailPanel!: Phaser.GameObjects.Container;
+  private selectionGraphics!: Phaser.GameObjects.Graphics;
+  private currentHeroId: HeroId = 'communityCreator';
+
+  private readonly heroIds: HeroId[] = ['communityCreator', 'civicCoder', 'digitalEquityAdvocate'];
+
+  // Stored for the selection overlay
+  private panelsData: Record<HeroId, { rect: any; color: number }> = {
+    communityCreator: { rect: { x: 48, y: 135, width: 548-48, height: 802-135 }, color: COLORS.CREATOR_PRIMARY },
+    civicCoder: { rect: { x: 574, y: 135, width: 1090-574, height: 802-135 }, color: COLORS.CODER_PRIMARY },
+    digitalEquityAdvocate: { rect: { x: 1123, y: 135, width: 1620-1123, height: 802-135 }, color: COLORS.ADVOCATE_PRIMARY }
+  };
+
+  private bgScale: number = 1;
+  private bgX: number = 0;
+  private bgY: number = 0;
 
   constructor() {
     super({ key: SCENE_KEYS.CHAR_SELECT });
@@ -22,341 +31,161 @@ export class CharacterSelectScene extends Phaser.Scene {
 
   create(): void {
     this.state = GameState.getInstance();
-    // Pre-select previously chosen hero
-    this.selectedIndex = HEROES.findIndex(h => h.id === this.state.selectedHero) ?? 0;
-    if (this.selectedIndex < 0) this.selectedIndex = 0;
+    this.currentHeroId = this.state.selectedHero || 'communityCreator';
 
-    this.buildBackground();
-    this.buildHeader();
-    this.buildHeroCards();
-    this.buildDetailPanel();
-    this.buildNavigationHints();
-    this.updateSelection();
+    if (this.textures.exists(ASSET_KEYS.CHARACTER_SELECT_SCREEN)) {
+      const bg = this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, ASSET_KEYS.CHARACTER_SELECT_SCREEN);
 
-    // Keyboard navigation
-    this.input.keyboard?.on('keydown-LEFT', () => this.navigate(-1));
-    this.input.keyboard?.on('keydown-RIGHT', () => this.navigate(1));
-    this.input.keyboard?.on('keydown-SPACE', () => this.confirmSelection());
-    this.input.keyboard?.on('keydown-ENTER', () => this.confirmSelection());
-    this.input.keyboard?.on('keydown-ESC', () => this.scene.start(SCENE_KEYS.MAIN_MENU));
-  }
+      const sourceWidth = bg.width || 1672;
+      const sourceHeight = bg.height || 941;
+      const scaleX = GAME_WIDTH / sourceWidth;
+      const scaleY = GAME_HEIGHT / sourceHeight;
+      this.bgScale = Math.min(scaleX, scaleY);
 
-  private buildBackground(): void {
-    const bg = this.add.graphics();
-    bg.fillStyle(0x050a14, 1);
-    bg.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+      bg.setScale(this.bgScale);
+      bg.texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
 
-    // Hero sheet as background
-    if (this.textures.exists(ASSET_KEYS.HEROES_SHEET)) {
-      const sheet = this.add.image(GAME_WIDTH / 2, 200, ASSET_KEYS.HEROES_SHEET);
-      sheet.setDisplaySize(GAME_WIDTH, 280);
-      sheet.setAlpha(0.12);
+      this.bgX = bg.x - (sourceWidth * this.bgScale) / 2;
+      this.bgY = bg.y - (sourceHeight * this.bgScale) / 2;
+
+      this.buildHitZones(sourceWidth, sourceHeight);
+    } else {
+      this.add.text(GAME_WIDTH/2, GAME_HEIGHT/2, 'CHAR SELECT SCREEN MISSING', { color: '#f00' }).setOrigin(0.5);
     }
 
-    // Decorative gradient
-    const grad = this.add.graphics();
-    grad.fillGradientStyle(0x0a0a2a, 0x0a0a2a, 0x0a1428, 0x0a1428, 1);
-    grad.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+    if (SHOW_SELECTION_OVERLAY) {
+      this.selectionGraphics = this.add.graphics();
+      this.updateSelectionOverlay();
+    }
   }
 
-  private buildHeader(): void {
-    this.add.text(GAME_WIDTH / 2, 36, 'CHOOSE YOUR CHAMPION', {
-      fontSize: '28px',
-      color: '#F5A623',
-      fontFamily: 'monospace',
-      fontStyle: 'bold',
-      letterSpacing: 4,
-    }).setOrigin(0.5);
+  private createImageButtonFromSourceRect(
+    sourceWidth: number,
+    sourceHeight: number,
+    rect: { x: number; y: number; width: number; height: number },
+    callback: () => void,
+    debug: boolean = false
+  ): Phaser.GameObjects.Zone {
+    const zoneX = this.bgX + (rect.x + rect.width / 2) * this.bgScale;
+    const zoneY = this.bgY + (rect.y + rect.height / 2) * this.bgScale;
+    const zoneW = rect.width * this.bgScale;
+    const zoneH = rect.height * this.bgScale;
 
-    this.add.text(GAME_WIDTH / 2, 70, 'SELECT HERO · ← → NAVIGATE · SPACE CONFIRM', {
-      fontSize: '12px',
-      color: '#446688',
-      fontFamily: 'monospace',
-      letterSpacing: 2,
-    }).setOrigin(0.5);
-  }
+    const zone = this.add.zone(zoneX, zoneY, zoneW, zoneH).setInteractive({ useHandCursor: true });
 
-  private buildHeroCards(): void {
-    const cardW = 320;
-    const cardH = 320;
-    const spacing = 40;
-    const totalW = HEROES.length * cardW + (HEROES.length - 1) * spacing;
-    const startX = (GAME_WIDTH - totalW) / 2;
-
-    HEROES.forEach((hero, i) => {
-      const x = startX + i * (cardW + spacing);
-      const y = 110;
-
-      const container = this.add.container(x, y);
-
-      // Card background
-      const cardBg = this.add.graphics();
-      cardBg.fillStyle(COLORS.UI_PRIMARY, 0.7);
-      cardBg.fillRoundedRect(0, 0, cardW, cardH, 10);
-      cardBg.lineStyle(2, hero.primaryColor, 0.5);
-      cardBg.strokeRoundedRect(0, 0, cardW, cardH, 10);
-      container.add(cardBg);
-
-      // Hero preview from sheet (or procedural sprite)
-      const heroImg = this.add.image(cardW / 2, 100, `${hero.id}_idle`);
-      heroImg.setDisplaySize(64, 90);
-      container.add(heroImg);
-
-      // Glow effect behind hero
-      const glow = this.add.graphics();
-      glow.fillStyle(hero.primaryColor, 0.15);
-      glow.fillCircle(cardW / 2, 100, 55);
-      container.addAt(glow, 1);
-
-      // Name
-      const nameText = this.add.text(cardW / 2, 162, hero.name, {
-        fontSize: '16px',
-        color: '#ffffff',
-        fontFamily: 'monospace',
-        fontStyle: 'bold',
-        align: 'center',
-        wordWrap: { width: cardW - 20 },
-      }).setOrigin(0.5, 0);
-      container.add(nameText);
-
-      // Subtitle
-      const subtitleText = this.add.text(cardW / 2, 185, hero.subtitle, {
-        fontSize: '12px',
-        color: `#${hero.primaryColor.toString(16).padStart(6, '0')}`,
-        fontFamily: 'monospace',
-        align: 'center',
-      }).setOrigin(0.5, 0);
-      container.add(subtitleText);
-
-      // Ability name
-      const abilityLabel = this.add.text(16, 214, `⚡ ${hero.abilityName}`, {
-        fontSize: '12px',
-        color: '#F5A623',
-        fontFamily: 'monospace',
-      });
-      container.add(abilityLabel);
-
-      // Stats bars
-      const stats = [
-        { label: 'HP', value: hero.hp / 150 },
-        { label: 'SPD', value: hero.speed / 270 },
-        { label: 'ATK', value: hero.attackDamage / 20 },
-      ];
-
-      stats.forEach((stat, si) => {
-        const sy = 240 + si * 20;
-        container.add(this.add.text(16, sy, stat.label, {
-          fontSize: '11px',
-          color: '#778899',
-          fontFamily: 'monospace',
-        }));
-        // Bar background
-        const barBg = this.add.graphics();
-        barBg.fillStyle(0x1A3A5C, 0.8);
-        barBg.fillRect(48, sy + 1, 200, 10);
-        container.add(barBg);
-        // Bar fill
-        const barFill = this.add.graphics();
-        barFill.fillStyle(hero.primaryColor, 0.9);
-        barFill.fillRect(48, sy + 1, 200 * stat.value, 10);
-        container.add(barFill);
-      });
-
-      // Select button
-      const selectBtn = this.add.graphics();
-      selectBtn.fillStyle(hero.primaryColor, 0.8);
-      selectBtn.fillRoundedRect(cardW / 2 - 70, 295, 140, 30, 6);
-      container.add(selectBtn);
-
-      const selectText = this.add.text(cardW / 2, 310, 'SELECT', {
-        fontSize: '14px',
-        color: '#ffffff',
-        fontFamily: 'monospace',
-        fontStyle: 'bold',
-      }).setOrigin(0.5, 0.5);
-      container.add(selectText);
-
-      // Interaction
-      const zone = this.add.zone(x + cardW / 2, y + cardH / 2, cardW, cardH).setInteractive({ useHandCursor: true });
-
-      zone.on('pointerover', () => {
-        if (this.selectedIndex !== i) {
-          this.selectedIndex = i;
-          this.updateSelection();
-          AudioSystem.playMenuSelect();
-        }
-      });
-
-      zone.on('pointerup', () => {
-        this.selectedIndex = i;
-        this.confirmSelection();
-      });
-
-      this.heroCards.push(container);
+    zone.on('pointerup', () => {
+      callback();
     });
+
+    if (debug) {
+      const graphics = this.add.graphics();
+      graphics.lineStyle(2, 0xff0000, 0.5);
+      graphics.strokeRect(zoneX - zoneW/2, zoneY - zoneH/2, zoneW, zoneH);
+    }
+
+    return zone;
   }
 
-  private buildDetailPanel(): void {
-    this.detailPanel = this.add.container(0, 448);
+  private buildHitZones(w: number, h: number): void {
+    const DEBUG = false;
 
-    const panelBg = this.add.graphics();
-    panelBg.fillStyle(0x0a0e1c, 0.85);
-    panelBg.fillRect(0, 0, GAME_WIDTH, 240);
-    panelBg.lineStyle(1, COLORS.UI_BORDER, 0.4);
-    panelBg.strokeRect(0, 0, GAME_WIDTH, 240);
-    this.detailPanel.add(panelBg);
-  }
+    // Panels
+    this.createImageButtonFromSourceRect(w, h, this.panelsData.communityCreator.rect, () => this.selectHero('communityCreator'), DEBUG);
+    this.createImageButtonFromSourceRect(w, h, this.panelsData.civicCoder.rect, () => this.selectHero('civicCoder'), DEBUG);
+    this.createImageButtonFromSourceRect(w, h, this.panelsData.digitalEquityAdvocate.rect, () => this.selectHero('digitalEquityAdvocate'), DEBUG);
 
-  private buildNavigationHints(): void {
-    // Back button
-    const backBtn = this.add.text(60, GAME_HEIGHT - 36, '← BACK', {
-      fontSize: '14px',
-      color: '#446688',
-      fontFamily: 'monospace',
-    }).setOrigin(0, 0.5).setInteractive({ useHandCursor: true });
-
-    backBtn.on('pointerup', () => {
+    // Back Button
+    this.createImageButtonFromSourceRect(w, h, { x: 380, y: 832, width: 603-380, height: 905-832 }, () => {
       AudioSystem.playMenuSelect();
       this.scene.start(SCENE_KEYS.MAIN_MENU);
-    });
-    backBtn.on('pointerover', () => backBtn.setColor('#88aacc'));
-    backBtn.on('pointerout', () => backBtn.setColor('#446688'));
+    }, DEBUG);
 
-    // Confirm button
-    const confirmBtn = this.add.text(GAME_WIDTH - 60, GAME_HEIGHT - 36, 'CONFIRM →', {
-      fontSize: '14px',
-      color: '#F5A623',
-      fontFamily: 'monospace',
-      fontStyle: 'bold',
-    }).setOrigin(1, 0.5).setInteractive({ useHandCursor: true });
-
-    confirmBtn.on('pointerup', () => this.confirmSelection());
-    confirmBtn.on('pointerover', () => confirmBtn.setScale(1.05));
-    confirmBtn.on('pointerout', () => confirmBtn.setScale(1));
-  }
-
-  private navigate(dir: number): void {
-    this.selectedIndex = Phaser.Math.Wrap(this.selectedIndex + dir, 0, HEROES.length);
-    this.updateSelection();
-    AudioSystem.playMenuSelect();
-  }
-
-  private updateSelection(): void {
-    const hero = HEROES[this.selectedIndex];
-
-    // Update card highlights
-    this.heroCards.forEach((card, i) => {
-      const isSelected = i === this.selectedIndex;
-      this.tweens.add({
-        targets: card,
-        scaleX: isSelected ? 1.06 : 1,
-        scaleY: isSelected ? 1.06 : 1,
-        alpha: isSelected ? 1 : 0.65,
-        duration: 180,
+    // Confirm Button
+    this.createImageButtonFromSourceRect(w, h, { x: 640, y: 827, width: 995-640, height: 908-827 }, () => {
+      AudioSystem.playCheckpoint();
+      this.state.selectedHero = this.currentHeroId;
+      this.state.save();
+      this.cameras.main.flash(300, 74, 144, 217, false);
+      this.time.delayedCall(300, () => {
+        this.scene.start(SCENE_KEYS.WORLD_MAP);
       });
-    });
+    }, DEBUG);
 
-    // Update detail panel
-    this.detailPanel.removeAll(true);
+    // View Stats
+    this.createImageButtonFromSourceRect(w, h, { x: 1025, y: 832, width: 1258-1025, height: 905-832 }, () => {
+      this.showToast("Stats overlay coming soon");
+    }, DEBUG);
 
-    const panelBg = this.add.graphics();
-    panelBg.fillStyle(0x0a0e1c, 0.9);
-    panelBg.fillRect(0, 0, GAME_WIDTH, 240);
-    panelBg.lineStyle(1, hero.primaryColor, 0.3);
-    panelBg.strokeRect(0, 0, GAME_WIDTH, 240);
-    this.detailPanel.add(panelBg);
+    // Settings
+    this.createImageButtonFromSourceRect(w, h, { x: 1490, y: 35, width: 1635-1490, height: 90-35 }, () => {
+      this.showToast("Settings coming soon");
+    }, DEBUG);
 
-    const colorHex = '#' + hero.primaryColor.toString(16).padStart(6, '0');
+    // Arrows
+    this.createImageButtonFromSourceRect(w, h, { x: 0, y: 395, width: 60, height: 500-395 }, () => {
+      this.cycleHero(-1);
+    }, DEBUG);
+    this.createImageButtonFromSourceRect(w, h, { x: 1610, y: 395, width: 1672-1610, height: 500-395 }, () => {
+      this.cycleHero(1);
+    }, DEBUG);
 
-    // Hero name
-    this.detailPanel.add(this.add.text(80, 20, hero.name.toUpperCase(), {
-      fontSize: '22px',
-      color: colorHex,
-      fontFamily: 'monospace',
-      fontStyle: 'bold',
-    }));
-
-    // Role
-    this.detailPanel.add(this.add.text(80, 50, hero.subtitle, {
-      fontSize: '14px',
-      color: '#aabbcc',
-      fontFamily: 'monospace',
-    }));
-
-    // Ability description
-    this.detailPanel.add(this.add.text(80, 78, `CIVIC ABILITY: ${hero.abilityName}`, {
-      fontSize: '13px',
-      color: '#F5A623',
-      fontFamily: 'monospace',
-      fontStyle: 'bold',
-    }));
-
-    this.detailPanel.add(this.add.text(80, 98, hero.abilityDescription, {
-      fontSize: '12px',
-      color: '#889aaa',
-      fontFamily: 'monospace',
-      wordWrap: { width: 500 },
-    }));
-
-    // Lore
-    this.detailPanel.add(this.add.text(80, 138, `"${hero.lore}"`, {
-      fontSize: '12px',
-      color: '#556677',
-      fontFamily: 'monospace',
-      fontStyle: 'italic',
-      wordWrap: { width: 500 },
-      lineSpacing: 3,
-    }));
-
-    // Full stats panel right side
-    const statsX = 700;
-    this.detailPanel.add(this.add.text(statsX, 20, 'STATS', {
-      fontSize: '14px',
-      color: '#aabbcc',
-      fontFamily: 'monospace',
-      fontStyle: 'bold',
-    }));
-
-    const statList = [
-      { label: 'HP', val: `${hero.hp}`, pct: hero.hp / 150 },
-      { label: 'SPEED', val: `${hero.speed}`, pct: hero.speed / 270 },
-      { label: 'JUMP', val: `${hero.jumpVelocity}`, pct: hero.jumpVelocity / 500 },
-      { label: 'ATTACK', val: `${hero.attackDamage}`, pct: hero.attackDamage / 20 },
-      { label: 'ABILITY DMG', val: `${hero.abilityDamage}`, pct: hero.abilityDamage / 38 },
-      { label: 'COOLDOWN', val: `${hero.abilityCooldown}s`, pct: 1 - hero.abilityCooldown / 10 },
-    ];
-
-    statList.forEach((s, si) => {
-      const sy = 44 + si * 28;
-      this.detailPanel.add(this.add.text(statsX, sy, s.label, {
-        fontSize: '11px',
-        color: '#778899',
-        fontFamily: 'monospace',
-      }));
-      this.detailPanel.add(this.add.text(statsX + 170, sy, s.val, {
-        fontSize: '11px',
-        color: '#ffffff',
-        fontFamily: 'monospace',
-      }));
-      const barBg = this.add.graphics();
-      barBg.fillStyle(0x1A3A5C, 0.6);
-      barBg.fillRect(statsX, sy + 14, 200, 6);
-      this.detailPanel.add(barBg);
-      const barFill = this.add.graphics();
-      barFill.fillStyle(hero.primaryColor, 0.85);
-      barFill.fillRect(statsX, sy + 14, 200 * s.pct, 6);
-      this.detailPanel.add(barFill);
-    });
+    // Keyboard support
+    this.input.keyboard?.on('keydown-LEFT', () => this.cycleHero(-1));
+    this.input.keyboard?.on('keydown-RIGHT', () => this.cycleHero(1));
   }
 
-  private confirmSelection(): void {
-    const hero = HEROES[this.selectedIndex];
-    this.state.selectedHero = hero.id as HeroId;
-    this.state.save();
-    AudioSystem.playCheckpoint();
-    this.cameras.main.flash(300, 74, 144, 217, false);
-    this.time.delayedCall(300, () => {
-      this.scene.start(SCENE_KEYS.WORLD_MAP);
+  private selectHero(id: HeroId): void {
+    if (this.currentHeroId !== id) {
+      this.currentHeroId = id;
+      AudioSystem.playMenuSelect();
+      this.updateSelectionOverlay();
+    }
+  }
+
+  private cycleHero(dir: number): void {
+    let idx = this.heroIds.indexOf(this.currentHeroId);
+    idx = (idx + dir + this.heroIds.length) % this.heroIds.length;
+    this.selectHero(this.heroIds[idx]);
+  }
+
+  private updateSelectionOverlay(): void {
+    if (!SHOW_SELECTION_OVERLAY || !this.selectionGraphics) return;
+
+    this.selectionGraphics.clear();
+
+    const data = this.panelsData[this.currentHeroId];
+    const rect = data.rect;
+
+    const x = this.bgX + rect.x * this.bgScale;
+    const y = this.bgY + rect.y * this.bgScale;
+    const w = rect.width * this.bgScale;
+    const h = rect.height * this.bgScale;
+
+    // Neon outline
+    this.selectionGraphics.lineStyle(4, data.color, 0.8);
+    this.selectionGraphics.strokeRoundedRect(x, y, w, h, 16 * this.bgScale);
+
+    // Inner glow
+    this.selectionGraphics.lineStyle(2, 0xffffff, 0.5);
+    this.selectionGraphics.strokeRoundedRect(x + 2, y + 2, w - 4, h - 4, 14 * this.bgScale);
+  }
+
+  private showToast(message: string): void {
+    const toast = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 60, message, {
+      fontSize: '18px',
+      color: '#ffffff',
+      backgroundColor: '#000000',
+      padding: { x: 10, y: 5 },
+      fontFamily: 'monospace',
+    }).setOrigin(0.5);
+
+    this.tweens.add({
+      targets: toast,
+      alpha: 0,
+      y: GAME_HEIGHT - 80,
+      duration: 1500,
+      delay: 1000,
+      onComplete: () => toast.destroy()
     });
   }
 }

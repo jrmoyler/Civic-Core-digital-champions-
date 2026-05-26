@@ -81,7 +81,7 @@ export class AssetGalleryScene extends Phaser.Scene {
 
   private buildTabs(): void {
     const tabs: Array<{ label: string; key: GalleryTab }> = [
-      { label: 'SOURCE ASSETS (11 Images)', key: 'assets' },
+      { label: 'SOURCE ASSETS (16 Images)', key: 'assets' },
       { label: 'LORE CODEX', key: 'lore' },
     ];
 
