@@ -47,8 +47,7 @@ export class MainMenuScene extends Phaser.Scene {
       fontFamily: 'monospace',
       fontStyle: 'bold',
       letterSpacing: 4,
-      alpha: 0,
-    }).setOrigin(0.5);
+    }).setOrigin(0.5).setAlpha(0);
 
     this.tweens.add({
       targets: tapText,
