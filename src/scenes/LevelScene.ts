@@ -1,10 +1,11 @@
 // ============================================================
 // CIVIC CORE: DIGITAL CHAMPIONS — Level Scene
-// Main gameplay scene. Handles all gameplay loop logic.
+// Physics: Phaser Matter.js — rigid-body + sensor collision system
+// Visuals: Three.js 3D parallax background + Phaser FX pipeline
 // ============================================================
 
 import Phaser from 'phaser';
-import { SCENE_KEYS, DEPTH, COLORS } from '../game/constants';
+import { SCENE_KEYS, DEPTH, COLORS, COLLISION_CATEGORIES } from '../game/constants';
 import { GameState } from '../game/state/GameState';
 import { InputSystem } from '../systems/InputSystem';
 import { EffectsSystem } from '../systems/EffectsSystem';
@@ -16,12 +17,14 @@ import { Boss } from '../entities/Boss';
 import { Collectible } from '../entities/Collectible';
 import { Checkpoint } from '../entities/Checkpoint';
 import { ExitBeacon } from '../entities/ExitBeacon';
+import { Projectile } from '../entities/Projectile';
 import { TouchControls } from '../ui/TouchControls';
 import { DialogueBox } from '../ui/DialogueBox';
 import { getLevelData } from '../data/levels';
 import { getHeroData } from '../data/heroes';
 import { getEnemyData, getBossData } from '../data/enemies';
 import { getCollectibleData } from '../data/collectibles';
+import { BackgroundRenderer } from '../three/BackgroundRenderer';
 import type { LevelData, ZoneId } from '../game/types';
 
 export class LevelScene extends Phaser.Scene {
@@ -47,10 +50,9 @@ export class LevelScene extends Phaser.Scene {
   private checkpoint!: Checkpoint;
   private exitBeacon!: ExitBeacon;
 
-  // Physics groups
-  private platforms!: Phaser.Physics.Arcade.StaticGroup;
-  private projectileGroup!: Phaser.Physics.Arcade.Group;
-  private enemyProjectiles!: Phaser.Physics.Arcade.Group;
+  // Projectile lists (plain arrays — no Arcade groups needed)
+  private playerProjectiles: Projectile[] = [];
+  private enemyProjectiles: Projectile[] = [];
 
   // Background
   private bgImage!: Phaser.GameObjects.Image;
@@ -62,6 +64,9 @@ export class LevelScene extends Phaser.Scene {
   // HUD tracking
   private lastHp: number = 0;
   private lastTokens: number = 0;
+
+  // Three.js background renderer
+  private bgRenderer: BackgroundRenderer | null = null;
 
   constructor() {
     super({ key: SCENE_KEYS.LEVEL });
@@ -75,6 +80,8 @@ export class LevelScene extends Phaser.Scene {
     this.enemies = [];
     this.boss = null;
     this.collectibles = [];
+    this.playerProjectiles = [];
+    this.enemyProjectiles = [];
   }
 
   create(): void {
@@ -87,15 +94,22 @@ export class LevelScene extends Phaser.Scene {
     }
     this.levelData = ld;
 
-    // Physics world
-    this.physics.world.gravity.y = 650;
-    this.physics.world.setBounds(0, 0, ld.worldWidth, ld.worldHeight);
+    // ── Physics world bounds ──────────────────────────────────
+    // Create explicit boundary walls with PLATFORM category so entity
+    // collision masks (which include PLATFORM) block at world edges.
+    this.buildWorldBounds(ld.worldWidth, ld.worldHeight);
 
-    // Camera
+    // ── Camera ───────────────────────────────────────────────
     this.cameras.main.setBounds(0, 0, ld.worldWidth, ld.worldHeight);
     this.cameras.main.setBackgroundColor(ld.bgColor);
 
-    // Build level
+    // Phaser FX: camera vignette for depth/atmosphere (WebGL only)
+    if (this.game.renderer.type === Phaser.WEBGL) {
+      this.cameras.main.postFX.addVignette(0.5, 0.5, 0.28, 0.65);
+    }
+
+    // ── Build level ──────────────────────────────────────────
+    this.initThreeBackground();
     this.buildBackground();
     this.buildPlatforms();
     this.spawnPlayer();
@@ -105,54 +119,58 @@ export class LevelScene extends Phaser.Scene {
     this.spawnBoss();
     this.spawnExitBeacon();
 
-    // Systems
+    // ── Systems ──────────────────────────────────────────────
     this.inputSys = new InputSystem(this);
     this.effects = new EffectsSystem(this);
     this.collisionDebug = new CollisionDebug(this);
     this.collisionDebug.setup(ld.platforms);
 
-    // Touch controls
     this.touchControls = new TouchControls(this, this.inputSys);
     const isMobile = !this.sys.game.device.os.desktop;
     this.touchControls.setVisible(isMobile);
 
-    // Dialogue
     this.dialogue = new DialogueBox(this);
 
-    // Camera follow player
+    // Camera follow
     this.cameras.main.startFollow(this.player, true, 0.08, 0.08);
     this.cameras.main.setFollowOffset(0, -60);
 
-    // Setup all collisions
-    this.setupCollisions();
+    // ── Matter collision events ───────────────────────────────
+    this.setupMatterCollisions();
 
-    // Launch HUD
+    // ── HUD ──────────────────────────────────────────────────
     this.scene.launch(SCENE_KEYS.HUD, { zoneId: this.zoneId });
     this.scene.bringToTop(SCENE_KEYS.HUD);
 
-    // Boss arena trigger X
     this.bossArenaX = this.levelData.boss.x - 400;
 
-    // Zone banner
     this.time.delayedCall(500, () => {
       this.effects.spawnBanner(
         `ZONE ${['zone1', 'zone2', 'zone3'].indexOf(this.zoneId) + 1}: ${ld.name.toUpperCase()}`,
         '#F5A623',
-        2500
+        2500,
       );
     });
 
-    // Input key: debug toggle
     this.input_keyboard_debug();
-
-    // Input key: pause
     this.input_keyboard_pause();
-
-    // Input key: map
-    this.input_keyboard_map();
-
-    // Update HUD with initial state
     this.updateHUD();
+
+    // Pause/hide Three.js when leaving this scene
+    this.events.once('shutdown', () => this.bgRenderer?.hide());
+    this.events.once('destroy',  () => this.bgRenderer?.destroy());
+  }
+
+  // ── Three.js 3D parallax background ─────────────────────────
+  private initThreeBackground(): void {
+    try {
+      this.bgRenderer = BackgroundRenderer.getInstance();
+      this.bgRenderer.setupZone(this.zoneId);
+      this.bgRenderer.show();
+    } catch (e) {
+      console.warn('[LevelScene] Three.js background unavailable:', e);
+      this.bgRenderer = null;
+    }
   }
 
   private buildBackground(): void {
@@ -164,46 +182,47 @@ export class LevelScene extends Phaser.Scene {
       this.bgImage.setDisplaySize(ld.worldWidth, ld.worldHeight);
       this.bgImage.setDepth(DEPTH.BG);
     } else {
-      // Fallback gradient
       const gfx = this.add.graphics();
       gfx.fillStyle(ld.bgColor, 1);
       gfx.fillRect(0, 0, ld.worldWidth, ld.worldHeight);
       gfx.setDepth(DEPTH.BG);
     }
 
-    // Ambient atmosphere overlay
     const atmo = this.add.graphics();
     atmo.fillStyle(ld.ambientColor, 0.12);
     atmo.fillRect(0, 0, ld.worldWidth, ld.worldHeight);
     atmo.setDepth(DEPTH.PARALLAX);
   }
 
+  // ── Platform creation (Matter static bodies) ─────────────────
   private buildPlatforms(): void {
-    this.platforms = this.physics.add.staticGroup();
-    this.projectileGroup = this.physics.add.group();
-    this.enemyProjectiles = this.physics.add.group();
-
     for (const plat of this.levelData.platforms) {
-      const rect = this.add.rectangle(
-        plat.x + plat.width / 2,
-        plat.y + plat.height / 2,
-        plat.width,
-        plat.height,
-        0x000000,
-        0  // invisible — background image shows the terrain
-      );
-      this.physics.add.existing(rect, true);
-      this.platforms.add(rect);
+      const cx = plat.x + plat.width / 2;
+      const cy = plat.y + plat.height / 2;
+      const label = plat.oneWay ? 'oneWayPlatform' : 'platform';
+      const category = plat.oneWay
+        ? COLLISION_CATEGORIES.ONE_WAY_PLATFORM
+        : COLLISION_CATEGORIES.PLATFORM;
+
+      this.matter.add.rectangle(cx, cy, plat.width, plat.height, {
+        isStatic: true,
+        label,
+        friction: 0.1,
+        collisionFilter: {
+          category,
+          mask: COLLISION_CATEGORIES.PLAYER
+               | COLLISION_CATEGORIES.ENEMY
+               | COLLISION_CATEGORIES.BOSS,
+        },
+      });
     }
   }
 
+  // ── Player spawn ──────────────────────────────────────────────
   private spawnPlayer(): void {
     const hero = getHeroData(this.gameState.selectedHero);
-    const spawn = this.levelData.spawn;
+    let { x: spawnX, y: spawnY } = this.levelData.spawn;
 
-    // Use checkpoint if available
-    let spawnX = spawn.x;
-    let spawnY = spawn.y;
     if (this.gameState.lastCheckpoint?.zoneId === this.zoneId) {
       spawnX = this.gameState.lastCheckpoint.x;
       spawnY = this.gameState.lastCheckpoint.y - 60;
@@ -226,8 +245,7 @@ export class LevelScene extends Phaser.Scene {
 
   private spawnCollectibles(): void {
     for (const spawn of this.levelData.collectibles) {
-      const c = new Collectible(this, spawn.x, spawn.y, spawn.type);
-      this.collectibles.push(c);
+      this.collectibles.push(new Collectible(this, spawn.x, spawn.y, spawn.type));
     }
   }
 
@@ -248,121 +266,134 @@ export class LevelScene extends Phaser.Scene {
     this.exitBeacon = new ExitBeacon(this, exit.x, exit.y);
   }
 
-  private setupCollisions(): void {
-    // Player on platforms
-    this.physics.add.collider(this.player, this.platforms);
+  // ── World boundary walls (explicit static bodies with PLATFORM category) ──
+  // This ensures entities whose masks include PLATFORM collide with the world edges.
+  private buildWorldBounds(w: number, h: number): void {
+    const wallOpts = (label: string) => ({
+      isStatic: true,
+      label,
+      collisionFilter: {
+        category: COLLISION_CATEGORIES.PLATFORM,
+        mask: COLLISION_CATEGORIES.PLAYER
+             | COLLISION_CATEGORIES.ENEMY
+             | COLLISION_CATEGORIES.BOSS,
+      },
+    });
+    const T = 32; // wall thickness
+    this.matter.add.rectangle(w / 2,  -T / 2,   w,   T, wallOpts('platform')); // ceiling
+    this.matter.add.rectangle(w / 2, h + T / 2,  w,   T, wallOpts('platform')); // floor
+    this.matter.add.rectangle(-T / 2, h / 2,     T,   h, wallOpts('platform')); // left
+    this.matter.add.rectangle(w + T / 2, h / 2,  T,   h, wallOpts('platform')); // right
+  }
 
-    // Enemies on platforms
-    for (const enemy of this.enemies) {
-      if (!enemy.enemyData.isFlying) {
-        this.physics.add.collider(enemy, this.platforms);
-      }
-    }
+  // ── Matter collision event handler ────────────────────────────
+  private setupMatterCollisions(): void {
+    // --- Ground contact tracking (player isGrounded) ---
+    this.matter.world.on('collisionstart', (event: any) => {
+      for (const pair of event.pairs) {
+        const { bodyA, bodyB } = pair;
 
-    // Boss on platforms
-    if (this.boss) {
-      this.physics.add.collider(this.boss, this.platforms);
-    }
-
-    // Player projectiles hit enemies
-    this.physics.add.overlap(
-      this.projectileGroup,
-      this.enemies as unknown as Phaser.GameObjects.GameObject[],
-      (projGO, enemyGO) => {
-        const p = projGO as unknown as Phaser.Physics.Arcade.Sprite & { damage: number };
-        const e = enemyGO as unknown as Enemy;
-        this.handleProjectileHitEnemy(p.damage, e, p.x, p.y);
-        p.destroy();
-      }
-    );
-
-    // Player projectiles hit boss
-    if (this.boss) {
-      this.physics.add.overlap(
-        this.projectileGroup,
-        this.boss,
-        (projGO) => {
-          const p = projGO as unknown as Phaser.Physics.Arcade.Sprite & { damage: number };
-          this.handleProjectileHitBoss(p.damage, p.x, p.y);
-          p.destroy();
+        // Player ↔ platform ground contacts
+        if (this.isPlayerBody(bodyA) && this.isPlatformBody(bodyB)) {
+          this.player.groundContacts++;
+        } else if (this.isPlayerBody(bodyB) && this.isPlatformBody(bodyA)) {
+          this.player.groundContacts++;
         }
-      );
-    }
 
-    // Enemy projectiles hit player
-    this.physics.add.overlap(
-      this.enemyProjectiles,
-      this.player,
-      (projGO) => {
-        const p = projGO as unknown as Phaser.Physics.Arcade.Sprite & { damage: number };
-        if (!this.player.isInvuln) {
-          const dir = p.x < this.player.x ? 1 : -1;
-          const died = this.player.takeDamage(p.damage, dir);
-          this.effects.spawnDamageText(this.player.x, this.player.y - 40, p.damage, 'normal');
-          p.destroy();
-          if (died) this.handlePlayerDeath();
-        }
-      }
-    );
-
-    // Collectibles
-    this.physics.add.overlap(
-      this.player,
-      this.collectibles as unknown as Phaser.GameObjects.GameObject[],
-      (_, collectibleObj) => {
-        const c = collectibleObj as unknown as Collectible;
-        if (!c.collected) {
-          this.collectItem(c);
-        }
-      }
-    );
-
-    // Checkpoint
-    this.physics.add.overlap(this.player, this.checkpoint, () => {
-      if (!this.checkpoint.activated) {
-        this.checkpoint.activate();
-        this.gameState.setCheckpoint(this.zoneId, this.checkpoint.x, this.checkpoint.y);
-        AudioSystem.playCheckpoint();
-        this.effects.spawnBanner('✓ CHECKPOINT RESTORED', '#00ffcc');
-        this.effects.spawnRingPulse(this.checkpoint.x, this.checkpoint.y, COLORS.CHECKPOINT_COLOR, 60);
+        // Sensor overlaps ──────────────────────────────────────
+        this.handleSensorOverlap(bodyA, bodyB);
+        this.handleSensorOverlap(bodyB, bodyA);
       }
     });
 
-    // Exit beacon
-    this.physics.add.overlap(this.player, this.exitBeacon, () => {
-      if (this.exitBeacon.active_beacon && !this.levelComplete) {
-        this.completeLevel();
+    this.matter.world.on('collisionend', (event: any) => {
+      for (const pair of event.pairs) {
+        const { bodyA, bodyB } = pair;
+        if (this.isPlayerBody(bodyA) && this.isPlatformBody(bodyB)) {
+          this.player.groundContacts = Math.max(0, this.player.groundContacts - 1);
+        } else if (this.isPlayerBody(bodyB) && this.isPlatformBody(bodyA)) {
+          this.player.groundContacts = Math.max(0, this.player.groundContacts - 1);
+        }
       }
     });
+  }
 
-    // Enemy touch damage
-    this.physics.add.overlap(
-      this.player,
-      this.enemies as unknown as Phaser.GameObjects.GameObject[],
-      (_, enemyObj) => {
-        const e = enemyObj as unknown as Enemy;
-        if (!e.isDead && !this.player.isInvuln) {
-          const dir = e.x < this.player.x ? 1 : -1;
-          const died = this.player.takeDamage(e.enemyData.damage, dir);
-          this.effects.spawnDamageText(this.player.x, this.player.y - 40, e.enemyData.damage, 'normal');
-          if (died) this.handlePlayerDeath();
+  private isPlayerBody(b: any): boolean {
+    return b.label === 'player';
+  }
+
+  private isPlatformBody(b: any): boolean {
+    return b.label === 'platform' || b.label === 'oneWayPlatform';
+  }
+
+  // Sensor overlap dispatcher — called for BOTH body orderings
+  private handleSensorOverlap(sensorBody: any, otherBody: any): void {
+    if (!sensorBody.isSensor) return;
+
+    switch (sensorBody.label) {
+      case 'playerProjectile': {
+        const proj = sensorBody.gameObject as Projectile | undefined;
+        if (!proj || !proj.active) return;
+
+        if (otherBody.label === 'enemy') {
+          const enemy = otherBody.gameObject as Enemy | undefined;
+          if (enemy && !enemy.isDead) {
+            this.handleProjectileHitEnemy(proj.damage, enemy, proj.x, proj.y);
+            proj.destroy();
+          }
+        } else if (otherBody.label === 'boss') {
+          if (this.boss && !this.boss.isDefeated) {
+            this.handleProjectileHitBoss(proj.damage, proj.x, proj.y);
+            proj.destroy();
+          }
         }
+        break;
       }
-    );
 
-    // Boss touch damage
-    if (this.boss) {
-      this.physics.add.overlap(this.player, this.boss, () => {
-        if (!this.boss!.isDefeated && !this.player.isInvuln) {
-          const dir = this.boss!.x < this.player.x ? 1 : -1;
-          const died = this.player.takeDamage(this.boss!.bossData.damage, dir);
-          this.effects.spawnDamageText(this.player.x, this.player.y - 40, this.boss!.bossData.damage, 'normal');
+      case 'enemyProjectile': {
+        const proj = sensorBody.gameObject as Projectile | undefined;
+        if (!proj || !proj.active) return;
+
+        if (otherBody.label === 'player' && !this.player.isInvuln) {
+          const dir = proj.x < this.player.x ? 1 : -1;
+          const died = this.player.takeDamage(proj.damage, dir);
+          this.effects.spawnDamageText(this.player.x, this.player.y - 40, proj.damage, 'normal');
+          proj.destroy();
           if (died) this.handlePlayerDeath();
         }
-      });
+        break;
+      }
+
+      case 'collectible': {
+        if (otherBody.label !== 'player') return;
+        const coll = sensorBody.gameObject as Collectible | undefined;
+        if (coll && !coll.collected) this.collectItem(coll);
+        break;
+      }
+
+      case 'checkpoint': {
+        if (otherBody.label !== 'player') return;
+        if (!this.checkpoint.activated) {
+          this.checkpoint.activate();
+          this.gameState.setCheckpoint(this.zoneId, this.checkpoint.x, this.checkpoint.y);
+          AudioSystem.playCheckpoint();
+          this.effects.spawnBanner('✓ CHECKPOINT RESTORED', '#00ffcc');
+          this.effects.spawnRingPulse(this.checkpoint.x, this.checkpoint.y, COLORS.CHECKPOINT_COLOR, 60);
+        }
+        break;
+      }
+
+      case 'exitBeacon': {
+        if (otherBody.label !== 'player') return;
+        if (this.exitBeacon.active_beacon && !this.levelComplete) {
+          this.completeLevel();
+        }
+        break;
+      }
     }
   }
 
+  // ── Keyboard shortcut handlers ────────────────────────────────
   private input_keyboard_debug(): void {
     this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.G)
       .on('down', () => {
@@ -371,26 +402,21 @@ export class LevelScene extends Phaser.Scene {
         this.effects.spawnBanner(
           state ? '🔲 COLLISION DEBUG: ON' : '🔲 COLLISION DEBUG: OFF',
           '#00FFCC',
-          1200
+          1200,
         );
       });
   }
 
   private input_keyboard_pause(): void {
-    // Handled in InputSystem, but also add direct scene event
     this.events.on('pause', () => {});
   }
 
-  private input_keyboard_map(): void {
-    // Handled in update loop
-  }
-
+  // ── Main update loop ──────────────────────────────────────────
   update(_time: number, delta: number): void {
     if (this.levelComplete || this.gameOver) return;
 
     const inputState = this.inputSys.read();
 
-    // Pause
     if (inputState.pause) {
       AudioSystem.playMenuSelect();
       this.scene.pause();
@@ -398,14 +424,12 @@ export class LevelScene extends Phaser.Scene {
       return;
     }
 
-    // Map shortcut
     if (inputState.map) {
       this.scene.stop(SCENE_KEYS.HUD);
       this.scene.start(SCENE_KEYS.WORLD_MAP);
       return;
     }
 
-    // Restart
     if (inputState.restart) {
       this.restartLevel();
       return;
@@ -414,25 +438,25 @@ export class LevelScene extends Phaser.Scene {
     // Update player
     this.player.update(inputState, delta);
 
-    // Melee attack hit detection
-    if (this.player.isAttacking()) {
-      this.checkMeleeHits();
-    }
+    // Melee hit detection
+    if (this.player.isAttacking()) this.checkMeleeHits();
 
     // Ability hit detection
-    if (this.player.isAbilityActive) {
-      this.checkAbilityHits();
-    }
+    if (this.player.isAbilityActive) this.checkAbilityHits();
+
+    // Enemy contact damage (manual overlap check — no Arcade overlap needed)
+    this.checkEnemyContactDamage();
 
     // Update enemies
     for (let i = this.enemies.length - 1; i >= 0; i--) {
       const enemy = this.enemies[i];
-      if (!enemy.active) {
-        this.enemies.splice(i, 1);
-        continue;
-      }
+      if (!enemy.active) { this.enemies.splice(i, 1); continue; }
       enemy.update(delta);
     }
+
+    // Clean up inactive projectiles from our tracking arrays
+    this.cleanProjectiles(this.playerProjectiles);
+    this.cleanProjectiles(this.enemyProjectiles);
 
     // Boss trigger
     if (this.boss && !this.boss.isDefeated && !this.bossTriggered) {
@@ -440,7 +464,6 @@ export class LevelScene extends Phaser.Scene {
         this.bossTriggered = true;
         this.boss.activate();
         this.effects.spawnBanner(`⚠ ${this.boss.bossData.name.toUpperCase()}!`, '#FF4444', 2000);
-        // Camera lock to arena (loose)
         this.cameras.main.stopFollow();
         this.time.delayedCall(800, () => {
           if (this.boss && !this.boss.isDefeated) {
@@ -454,12 +477,11 @@ export class LevelScene extends Phaser.Scene {
     if (this.boss && !this.boss.isDefeated) {
       this.boss.update(delta);
     } else if (this.boss?.isDefeated && !this.exitBeacon.active_beacon) {
-      // Activate exit after boss death
       this.time.delayedCall(1500, () => {
         this.exitBeacon.activateBeacon();
         this.effects.spawnBanner('⬢ EXIT BEACON ACTIVATED — Reach the Beacon!', '#FFFFAA', 2500);
       });
-      this.boss = null; // prevent re-triggering
+      this.boss = null;
     }
 
     // Update collectibles
@@ -470,42 +492,49 @@ export class LevelScene extends Phaser.Scene {
     // Update exit beacon
     this.exitBeacon.update(delta);
 
-    // Update HUD
+    // Update Three.js background (sync to Phaser camera scroll)
+    if (this.bgRenderer) {
+      this.bgRenderer.update(this.cameras.main.scrollX, delta);
+    }
+
     this.updateHUD();
   }
 
+  private cleanProjectiles(list: Projectile[]): void {
+    for (let i = list.length - 1; i >= 0; i--) {
+      if (!list[i].active) list.splice(i, 1);
+    }
+  }
+
+  // ── Hit detection ─────────────────────────────────────────────
   private checkMeleeHits(): void {
     const attackBox = this.player.getAttackHitbox();
     const hero = this.player.heroData;
 
-    // Hit enemies
     for (const enemy of this.enemies) {
       if (enemy.isDead || !enemy.active) continue;
-      const enemyBounds = new Phaser.Geom.Rectangle(
+      const eb = new Phaser.Geom.Rectangle(
         enemy.x - enemy.enemyData.width / 2,
         enemy.y - enemy.enemyData.height / 2,
         enemy.enemyData.width,
-        enemy.enemyData.height
+        enemy.enemyData.height,
       );
-      if (Phaser.Geom.Intersects.RectangleToRectangle(attackBox, enemyBounds)) {
+      if (Phaser.Geom.Intersects.RectangleToRectangle(attackBox, eb)) {
         const isCrit = Math.random() < 0.15;
         const dmg = isCrit ? Math.floor(hero.attackDamage * 1.5) : hero.attackDamage;
         const killed = enemy.takeDamage(dmg);
         this.effects.spawnDamageText(enemy.x, enemy.y - 30, dmg, isCrit ? 'crit' : 'normal');
         this.effects.spawnHitParticles(enemy.x, enemy.y, 0xFFFFFF, 5);
-        if (killed) {
-          this.gameState.addTokens(Math.ceil(enemy.enemyData.points / 10));
-        }
+        if (killed) this.gameState.addTokens(Math.ceil(enemy.enemyData.points / 10));
       }
     }
 
-    // Hit boss
     if (this.boss && !this.boss.isDefeated) {
       const bossBounds = new Phaser.Geom.Rectangle(
         this.boss.x - this.boss.bossData.width / 2,
         this.boss.y - this.boss.bossData.height / 2,
         this.boss.bossData.width * 1.4,
-        this.boss.bossData.height * 1.4
+        this.boss.bossData.height * 1.4,
       );
       if (Phaser.Geom.Intersects.RectangleToRectangle(attackBox, bossBounds)) {
         const defeated = this.boss.takeDamage(hero.attackDamage);
@@ -525,15 +554,13 @@ export class LevelScene extends Phaser.Scene {
         enemy.x - enemy.enemyData.width / 2,
         enemy.y - enemy.enemyData.height / 2,
         enemy.enemyData.width,
-        enemy.enemyData.height
+        enemy.enemyData.height,
       );
       if (Phaser.Geom.Intersects.RectangleToRectangle(abilityBox, eb)) {
         const killed = enemy.takeDamage(hero.abilityDamage);
         this.effects.spawnDamageText(enemy.x, enemy.y - 30, hero.abilityDamage, 'ability');
         this.effects.spawnHitParticles(enemy.x, enemy.y, hero.primaryColor, 6);
-        if (killed) {
-          this.gameState.addTokens(Math.ceil(enemy.enemyData.points / 10));
-        }
+        if (killed) this.gameState.addTokens(Math.ceil(enemy.enemyData.points / 10));
       }
     }
 
@@ -544,14 +571,43 @@ export class LevelScene extends Phaser.Scene {
     }
   }
 
+  /** Manual enemy-touch-damage check (no Arcade overlap needed) */
+  private checkEnemyContactDamage(): void {
+    if (this.player.isInvuln) return;
+    const px = this.player.x;
+    const py = this.player.y;
+    const TOUCH_DIST = 50; // px — broad contact threshold
+
+    for (const enemy of this.enemies) {
+      if (enemy.isDead || !enemy.active) continue;
+      const dx = enemy.x - px;
+      const dy = enemy.y - py;
+      if (Math.sqrt(dx * dx + dy * dy) < TOUCH_DIST) {
+        const dir = enemy.x < px ? 1 : -1;
+        const died = this.player.takeDamage(enemy.enemyData.damage, dir);
+        this.effects.spawnDamageText(px, py - 40, enemy.enemyData.damage, 'normal');
+        if (died) { this.handlePlayerDeath(); return; }
+      }
+    }
+
+    if (this.boss && !this.boss.isDefeated) {
+      const dx = this.boss.x - px;
+      const dy = this.boss.y - py;
+      if (Math.sqrt(dx * dx + dy * dy) < 70) {
+        const dir = this.boss.x < px ? 1 : -1;
+        const died = this.player.takeDamage(this.boss.bossData.damage, dir);
+        this.effects.spawnDamageText(px, py - 40, this.boss.bossData.damage, 'normal');
+        if (died) this.handlePlayerDeath();
+      }
+    }
+  }
+
   private handleProjectileHitEnemy(damage: number, enemy: Enemy, hx: number, hy: number): void {
     if (enemy.isDead) return;
     const killed = enemy.takeDamage(damage);
     this.effects.spawnDamageText(hx, hy - 20, damage, 'normal');
     this.effects.spawnHitParticles(hx, hy, 0xFFFFFF, 4);
-    if (killed) {
-      this.gameState.addTokens(Math.ceil(enemy.enemyData.points / 10));
-    }
+    if (killed) this.gameState.addTokens(Math.ceil(enemy.enemyData.points / 10));
   }
 
   private handleProjectileHitBoss(damage: number, hx: number, hy: number): void {
@@ -565,11 +621,7 @@ export class LevelScene extends Phaser.Scene {
     this.effects.spawnBanner(`✓ ${this.boss?.bossData.name ?? 'BOSS'} DEFEATED!`, '#00FFCC', 3000);
     this.effects.shakeCamera(0.02, 1200);
     AudioSystem.playVictory();
-
-    // Give token reward
     this.gameState.addTokens(20);
-
-    // boss.isDefeated triggers exit beacon in update loop
   }
 
   private collectItem(c: Collectible): void {
@@ -615,13 +667,14 @@ export class LevelScene extends Phaser.Scene {
         this.effects.spawnBanner('♥ EXTRA LIFE GRANTED', '#FF4444', 1400);
         AudioSystem.playCollectItem();
         break;
-      case 'hiddenLorePage':
+      case 'hiddenLorePage': {
         const loreIds = ['zone1_history', 'zone2_history', 'zone3_history', 'ai_literacy_1'];
         const id = loreIds[Math.floor(Math.random() * loreIds.length)];
         this.gameState.unlockLore(id);
         this.effects.spawnBanner('📖 LORE PAGE UNLOCKED', '#FFDD88', 1500);
         AudioSystem.playCollectItem();
         break;
+      }
       case 'challengeRoomKey':
         this.gameState.addTokens(3);
         this.effects.spawnBanner('🔑 CHALLENGE ROOM KEY', '#FFAA44', 1200);
@@ -629,7 +682,6 @@ export class LevelScene extends Phaser.Scene {
         break;
     }
 
-    // Remove from tracking
     const idx = this.collectibles.indexOf(c);
     if (idx > -1) this.collectibles.splice(idx, 1);
   }
@@ -637,7 +689,6 @@ export class LevelScene extends Phaser.Scene {
   private handlePlayerDeath(): void {
     if (this.gameOver) return;
 
-    // Extra life?
     if (this.gameState.hasExtraLife) {
       this.gameState.hasExtraLife = false;
       this.effects.spawnBanner('♥ EXTRA LIFE USED!', '#FF4444', 2000);
@@ -646,7 +697,6 @@ export class LevelScene extends Phaser.Scene {
         this.player.hp = this.player.maxHp;
         this.player.playerState = 'idle';
         this.player.isInvuln = false;
-        // Respawn at checkpoint
         const cp = this.gameState.lastCheckpoint;
         if (cp && cp.zoneId === this.zoneId) {
           this.player.setPosition(cp.x, cp.y - 60);
@@ -658,7 +708,6 @@ export class LevelScene extends Phaser.Scene {
     this.gameOver = true;
     AudioSystem.playGameOver();
     this.effects.flashCamera(0xFF0000, 600);
-
     this.time.delayedCall(1800, () => {
       this.scene.stop(SCENE_KEYS.HUD);
       this.scene.start(SCENE_KEYS.GAME_OVER, { zoneId: this.zoneId });
@@ -677,7 +726,6 @@ export class LevelScene extends Phaser.Scene {
 
     this.time.delayedCall(2500, () => {
       this.scene.stop(SCENE_KEYS.HUD);
-
       const isLastZone = this.zoneId === 'zone3';
       if (isLastZone) {
         this.scene.start(SCENE_KEYS.VICTORY, {
@@ -698,25 +746,21 @@ export class LevelScene extends Phaser.Scene {
 
   private updateHUD(): void {
     if (!this.scene.isActive(SCENE_KEYS.HUD)) return;
-
     const hudScene = this.scene.get(SCENE_KEYS.HUD) as unknown as {
       updatePlayerHP?: (hp: number, max: number) => void;
       updateTokens?: (count: number) => void;
       updateAbilityCooldown?: (fraction: number) => void;
     };
-
     if (!hudScene) return;
 
     if (this.lastHp !== this.player.hp) {
       this.lastHp = this.player.hp;
       hudScene.updatePlayerHP?.(this.player.hp, this.player.maxHp);
     }
-
     if (this.lastTokens !== this.gameState.tokensCollected) {
       this.lastTokens = this.gameState.tokensCollected;
       hudScene.updateTokens?.(this.gameState.tokensCollected);
     }
-
     hudScene.updateAbilityCooldown?.(this.player.abilityCooldownFraction);
   }
 }

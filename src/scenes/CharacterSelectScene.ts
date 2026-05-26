@@ -30,6 +30,12 @@ export class CharacterSelectScene extends Phaser.Scene {
   }
 
   create(): void {
+    // Reset camera in case we arrived from LevelScene which uses startFollow + setBounds.
+    // Without this, camera scroll bleeds over and the cards appear offset / clipped.
+    this.cameras.main.setScroll(0, 0);
+    this.cameras.main.resetFX();
+    this.cameras.main.removeBounds(); // clear any bounds set by LevelScene
+
     this.state = GameState.getInstance();
     this.currentHeroId = this.state.selectedHero || 'communityCreator';
 
@@ -45,6 +51,102 @@ export class CharacterSelectScene extends Phaser.Scene {
       bg.setScale(this.bgScale);
       bg.texture.setFilter(Phaser.Textures.FilterMode.NEAREST);
 
+  private buildHeroCards(): void {
+    const cardW = 320;
+    const cardH = 320;
+    const spacing = 40;
+    const totalW = HEROES.length * cardW + (HEROES.length - 1) * spacing;
+    const startX = (GAME_WIDTH - totalW) / 2;
+
+    HEROES.forEach((hero, i) => {
+      const x = startX + i * (cardW + spacing);
+      const y = 110;
+
+      const container = this.add.container(x, y);
+
+      // Card background
+      const cardBg = this.add.graphics();
+      cardBg.fillStyle(COLORS.UI_PRIMARY, 0.7);
+      cardBg.fillRoundedRect(0, 0, cardW, cardH, 10);
+      cardBg.lineStyle(2, hero.primaryColor, 0.5);
+      cardBg.strokeRoundedRect(0, 0, cardW, cardH, 10);
+      container.add(cardBg);
+
+      // Hero preview uses the same cleaned real sprites that appear in-game.
+      const spriteKey = `hero_${hero.id}_idle`;
+      const fallbackKey = `${hero.id}_idle`;
+      const heroImg = this.add.sprite(
+        cardW / 2,
+        100,
+        this.textures.exists(spriteKey) ? spriteKey : fallbackKey,
+        0
+      );
+      heroImg.setDisplaySize(78, 90);
+      const idleAnimKey = `${hero.id}_idle`;
+      if (this.anims.exists(idleAnimKey)) {
+        heroImg.play(idleAnimKey);
+      }
+      container.add(heroImg);
+
+      // Glow effect behind hero
+      const glow = this.add.graphics();
+      glow.fillStyle(hero.primaryColor, 0.15);
+      glow.fillCircle(cardW / 2, 100, 55);
+      container.addAt(glow, 1);
+
+      // Name
+      const nameText = this.add.text(cardW / 2, 162, hero.name, {
+        fontSize: '16px',
+        color: '#ffffff',
+        fontFamily: 'monospace',
+        fontStyle: 'bold',
+        align: 'center',
+        wordWrap: { width: cardW - 20 },
+      }).setOrigin(0.5, 0);
+      container.add(nameText);
+
+      // Subtitle
+      const subtitleText = this.add.text(cardW / 2, 185, hero.subtitle, {
+        fontSize: '12px',
+        color: `#${hero.primaryColor.toString(16).padStart(6, '0')}`,
+        fontFamily: 'monospace',
+        align: 'center',
+      }).setOrigin(0.5, 0);
+      container.add(subtitleText);
+
+      // Ability name
+      const abilityLabel = this.add.text(16, 214, `⚡ ${hero.abilityName}`, {
+        fontSize: '12px',
+        color: '#F5A623',
+        fontFamily: 'monospace',
+      });
+      container.add(abilityLabel);
+
+      // Stats bars
+      const stats = [
+        { label: 'HP', value: hero.hp / 150 },
+        { label: 'SPD', value: hero.speed / 270 },
+        { label: 'ATK', value: hero.attackDamage / 20 },
+      ];
+
+      stats.forEach((stat, si) => {
+        const sy = 240 + si * 20;
+        container.add(this.add.text(16, sy, stat.label, {
+          fontSize: '11px',
+          color: '#778899',
+          fontFamily: 'monospace',
+        }));
+        // Bar background
+        const barBg = this.add.graphics();
+        barBg.fillStyle(0x1A3A5C, 0.8);
+        barBg.fillRect(48, sy + 1, 200, 10);
+        container.add(barBg);
+        // Bar fill
+        const barFill = this.add.graphics();
+        barFill.fillStyle(hero.primaryColor, 0.9);
+        barFill.fillRect(48, sy + 1, 200 * stat.value, 10);
+        container.add(barFill);
+      });
       this.bgX = bg.x - (sourceWidth * this.bgScale) / 2;
       this.bgY = bg.y - (sourceHeight * this.bgScale) / 2;
 

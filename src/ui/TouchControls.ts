@@ -157,6 +157,22 @@ export class TouchControls {
 
   private onPointerUp(pointer: Phaser.Input.Pointer): void {
     if (!this.visible) return;
+
+    // Always release button states on any pointer-up so buttons don't get stuck
+    const W = this.scene.scale.width;
+    const H = this.scene.scale.height;
+    const bx = W - 80;
+    const by = H - 80;
+    const { x, y } = pointer;
+
+    if (this.isNearButton(x, y, bx, by - 80)) {
+      this.input.virtualJump = false;
+    } else if (this.isNearButton(x, y, bx + 70, by)) {
+      this.input.virtualAttack = false;
+    } else if (this.isNearButton(x, y, bx - 70, by)) {
+      this.input.virtualAbility = false;
+    }
+
     if (this.joystickPointer?.id === pointer.id) {
       this.joystickActive = false;
       this.joystickPointer = null;

@@ -1,40 +1,37 @@
 // ============================================================
 // CIVIC CORE: DIGITAL CHAMPIONS — Collectible Entity
-// Uses real sprite sheets (base + sparkle frames) when available,
-// falls back to procedural TextureFactory sprites.
+// Physics: Matter.js sensor (overlap detection, no physics response)
 // ============================================================
 
 import Phaser from 'phaser';
 import type { CollectibleType } from '../game/types';
-import { DEPTH } from '../game/constants';
+import { DEPTH, COLLISION_CATEGORIES } from '../game/constants';
 
-// Collectible type → spritesheet file key
 const SPRITE_KEY_MAP: Partial<Record<CollectibleType, string>> = {
-  accessToken:       'coll_token',
-  healthPack:        'coll_health_pack',
-  aiLiteracyScroll:  'coll_ai_scroll',
-  patchBattery:      'coll_patch_battery',
-  signalShield:      'coll_signal_shield',
-  empowermentShard:  'coll_empowerment_shard',
-  extraLife:         'coll_extra_life',
-  hiddenLorePage:    'coll_hidden_lore',
-  challengeRoomKey:  'coll_challenge_key',
+  accessToken:      'coll_token',
+  healthPack:       'coll_health_pack',
+  aiLiteracyScroll: 'coll_ai_scroll',
+  patchBattery:     'coll_patch_battery',
+  signalShield:     'coll_signal_shield',
+  empowermentShard: 'coll_empowerment_shard',
+  extraLife:        'coll_extra_life',
+  hiddenLorePage:   'coll_hidden_lore',
+  challengeRoomKey: 'coll_challenge_key',
 };
 
-// Fallback procedural texture keys (from TextureFactory)
 const FALLBACK_MAP: Record<CollectibleType, string> = {
-  accessToken:       'token_idle',
-  healthPack:        'healthPack_idle',
-  aiLiteracyScroll:  'aiLiteracyScroll_idle',
-  patchBattery:      'patchBattery_idle',
-  signalShield:      'signalShield_idle',
-  empowermentShard:  'empowermentShard_idle',
-  extraLife:         'extraLife_idle',
-  hiddenLorePage:    'hiddenLorePage_idle',
-  challengeRoomKey:  'challengeRoomKey_idle',
+  accessToken:      'token_idle',
+  healthPack:       'healthPack_idle',
+  aiLiteracyScroll: 'aiLiteracyScroll_idle',
+  patchBattery:     'patchBattery_idle',
+  signalShield:     'signalShield_idle',
+  empowermentShard: 'empowermentShard_idle',
+  extraLife:        'extraLife_idle',
+  hiddenLorePage:   'hiddenLorePage_idle',
+  challengeRoomKey: 'challengeRoomKey_idle',
 };
 
-export class Collectible extends Phaser.Physics.Arcade.Sprite {
+export class Collectible extends Phaser.Physics.Matter.Sprite {
   public readonly collectibleType: CollectibleType;
   public collected: boolean = false;
   private bobTimer: number = 0;
@@ -47,34 +44,34 @@ export class Collectible extends Phaser.Physics.Arcade.Sprite {
     const useReal = !!spriteKey && scene.textures.exists(spriteKey);
     const key = useReal ? spriteKey! : fallbackKey;
 
-    super(scene, x, y, key, 0);
+    super(scene.matter.world, x, y, key, 0, {
+      label: 'collectible',
+      isSensor: true,
+      isStatic: true,
+      collisionFilter: {
+        category: COLLISION_CATEGORIES.COLLECTIBLE,
+        mask: COLLISION_CATEGORIES.PLAYER,
+      },
+    });
+
     this.collectibleType = type;
     this.baseY = y;
     this.usesRealSprite = useReal;
 
     scene.add.existing(this);
-    scene.physics.add.existing(this);
-
     this.setDepth(DEPTH.COLLECTIBLES);
-    // Scale down the large spritesheet frames to a gameplay-appropriate size
-    if (useReal) {
-      this.setScale(0.35); // 128px → ~45px visual size
+
+    if (useReal) this.setScale(0.35);
+
+    // Glow on collectibles (WebGL only)
+    if (scene.game.renderer.type === Phaser.WEBGL) {
+      this.postFX.addGlow(0xffd700, 2, 0, false, 0.1, 8);
     }
 
-    const body = this.body as Phaser.Physics.Arcade.Body;
-    body.setAllowGravity(false);
-    body.setImmovable(true);
-    // Collision body is independent of display scale
-    body.setSize(32, 32);
-
-    // Play sparkle animation if available
     if (useReal) {
       const animKey = spriteKey!;
-      if (scene.anims.exists(animKey)) {
-        this.anims.play(animKey, true);
-      }
+      if (scene.anims.exists(animKey)) this.anims.play(animKey, true);
     } else if (type === 'accessToken') {
-      // Legacy procedural token shimmer
       scene.time.addEvent({
         delay: 400,
         loop: true,
@@ -90,7 +87,6 @@ export class Collectible extends Phaser.Physics.Arcade.Sprite {
 
   update(delta: number): void {
     if (this.collected) return;
-    // Gentle bob
     this.bobTimer += delta;
     this.y = this.baseY + Math.sin(this.bobTimer / 400) * 4;
   }

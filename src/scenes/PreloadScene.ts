@@ -140,6 +140,21 @@ export class PreloadScene extends Phaser.Scene {
     // Generate fallback placeholder textures for any that failed
     this.generateFallbackTextures();
 
+    // Show 100% complete state before transitioning
+    this.loadBar.clear();
+    this.loadBar.fillStyle(COLORS.UI_ACCENT, 1);
+    this.loadBar.fillRoundedRect(
+      GAME_WIDTH / 2 - 258,
+      GAME_HEIGHT / 2 + 22,
+      514,
+      20,
+      5
+    );
+    if (this.missingAssets.length === 0) {
+      this.loadText.setText('Ready!');
+      this.loadText.setColor('#00ff88');
+    }
+
     // Short delay then move to main menu
     this.time.delayedCall(500, () => {
       this.scene.start(SCENE_KEYS.MAIN_MENU);
