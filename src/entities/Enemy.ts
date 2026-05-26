@@ -65,9 +65,12 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     this.setDepth(DEPTH.ENEMIES);
 
     const body = this.body as Phaser.Physics.Arcade.Body;
-    // Use sprite-accurate hitbox for spritesheet-based enemies (81x44 frames → 60x34 body)
-    const bodyWidth = data.width > 0 ? data.width : 60;
-    const bodyHeight = data.height > 0 ? data.height : 34;
+    // Use actual sprite frame dimensions for physics body (adaptive to real vs fallback textures)
+    const eFrame = (this.texture as Phaser.Textures.Texture).get(0) as Phaser.Textures.Frame;
+    const eFrameW = (eFrame && eFrame.realWidth > 0) ? eFrame.realWidth : (data.width > 0 ? data.width : 60);
+    const eFrameH = (eFrame && eFrame.realHeight > 0) ? eFrame.realHeight : (data.height > 0 ? data.height : 34);
+    const bodyWidth = Math.max(20, Math.floor(eFrameW * 0.70));
+    const bodyHeight = Math.max(20, Math.floor(eFrameH * 0.80));
     body.setSize(bodyWidth, bodyHeight);
     body.setCollideWorldBounds(true);
 
@@ -76,7 +79,7 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
       body.setGravityY(-650); // override world gravity for fliers
     }
 
-    this.healthBar = new HealthBar(scene, x - data.width / 2, y - data.height / 2 - 14, data.width, 6, data.hp, false);
+    this.healthBar = new HealthBar(scene, x - bodyWidth / 2, y - bodyHeight / 2 - 14, bodyWidth, 6, data.hp, false);
     this.healthBar.setDepth(DEPTH.ENEMIES + 1);
 
     this.patrolTimer = Math.random() * 2000; // stagger patrol
@@ -274,7 +277,8 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
 
   private updateHealthBar(): void {
     this.healthBar.update(this.hp, this.enemyData.hp);
-    this.healthBar.setPosition(this.x - this.enemyData.width / 2, this.y - this.enemyData.height / 2 - 14);
+    const currentBody = this.body as Phaser.Physics.Arcade.Body;
+    this.healthBar.setPosition(this.x - currentBody.width / 2, this.y - currentBody.height / 2 - 14);
   }
 
   private updateAnimation(state: EnemyState): void {
