@@ -21,6 +21,12 @@ export class CharacterSelectScene extends Phaser.Scene {
   }
 
   create(): void {
+    // Reset camera in case we arrived from LevelScene which uses startFollow + setBounds.
+    // Without this, camera scroll bleeds over and the cards appear offset / clipped.
+    this.cameras.main.setScroll(0, 0);
+    this.cameras.main.resetFX();
+    this.cameras.main.removeBounds(); // clear any bounds set by LevelScene
+
     this.state = GameState.getInstance();
     // Pre-select previously chosen hero
     this.selectedIndex = HEROES.findIndex(h => h.id === this.state.selectedHero) ?? 0;
