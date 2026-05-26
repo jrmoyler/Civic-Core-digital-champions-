@@ -1,13 +1,15 @@
 // ============================================================
 // CIVIC CORE: DIGITAL CHAMPIONS — Enemy Entity
+// Physics: Phaser.Physics.Matter.Sprite (rigid-body)
 // ============================================================
 
 import Phaser from 'phaser';
 import type { EnemyData, EnemyState } from '../game/types';
-import { DEPTH } from '../game/constants';
+import { DEPTH, COLLISION_CATEGORIES, MATTER_VELOCITY_SCALE } from '../game/constants';
 import { HealthBar } from '../ui/HealthBar';
 import { Projectile } from './Projectile';
 import { AudioSystem } from '../systems/AudioSystem';
+import type { Player } from './Player';
 
 const TEXTURE_MAP: Record<string, string> = {
   misinformerDrone: 'drone',
@@ -20,7 +22,7 @@ const TEXTURE_MAP: Record<string, string> = {
   dataSpikeHazard: 'spike_trap',
 };
 
-export class Enemy extends Phaser.Physics.Arcade.Sprite {
+export class Enemy extends Phaser.Physics.Matter.Sprite {
   public readonly enemyData: EnemyData;
   public hp: number;
   public enemyState: EnemyState = 'patrol';
@@ -36,63 +38,83 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
   private hurtTimer: number = 0;
 
   private healthBar: HealthBar;
-  private projectileGroup?: Phaser.Physics.Arcade.Group;
+  // Reference to the shared projectile list in LevelScene
+  private projectileList?: Projectile[];
 
-  // Track player reference for AI
-  private playerRef: Phaser.Physics.Arcade.Sprite | null = null;
+  private playerRef: Player | null = null;
 
   constructor(
     scene: Phaser.Scene,
     x: number,
     y: number,
     data: EnemyData,
-    projectileGroup?: Phaser.Physics.Arcade.Group
+    projectileList?: Projectile[],
   ) {
     const prefix = TEXTURE_MAP[data.type] ?? 'drone';
-    // Use spritesheet texture if available, otherwise fall back to static texture
     const spritesheetKey = `enemy_${prefix}_idle`;
     const initialTexture = scene.textures.exists(spritesheetKey) ? spritesheetKey : `${prefix}_idle`;
-    super(scene, x, y, initialTexture, 0);
+    super(scene.matter.world, x, y, initialTexture, 0);
+
     this.enemyData = data;
     this.hp = data.hp;
     this.spawnX = x;
     this.spawnY = y;
-    this.projectileGroup = projectileGroup;
+    this.projectileList = projectileList;
 
     scene.add.existing(this);
-    scene.physics.add.existing(this);
-
     this.setDepth(DEPTH.ENEMIES);
 
-    const body = this.body as Phaser.Physics.Arcade.Body;
-    // Use actual sprite frame dimensions for physics body (adaptive to real vs fallback textures)
+    // Compute body dimensions from actual frame size
     const eFrame = (this.texture as Phaser.Textures.Texture).get(0) as Phaser.Textures.Frame;
     const eFrameW = (eFrame && eFrame.realWidth > 0) ? eFrame.realWidth : (data.width > 0 ? data.width : 60);
     const eFrameH = (eFrame && eFrame.realHeight > 0) ? eFrame.realHeight : (data.height > 0 ? data.height : 34);
-    const bodyWidth = Math.max(20, Math.floor(eFrameW * 0.70));
-    const bodyHeight = Math.max(20, Math.floor(eFrameH * 0.80));
-    body.setSize(bodyWidth, bodyHeight);
-    body.setCollideWorldBounds(true);
+    const bodyW = Math.max(20, Math.floor(eFrameW * 0.70));
+    const bodyH = Math.max(20, Math.floor(eFrameH * 0.80));
 
+    this.setRectangle(bodyW, bodyH, {
+      label: 'enemy',
+      frictionAir: 0.04,
+      friction: 0.08,
+      restitution: 0,
+      collisionFilter: {
+        category: COLLISION_CATEGORIES.ENEMY,
+        mask: COLLISION_CATEGORIES.PLATFORM
+             | COLLISION_CATEGORIES.ONE_WAY_PLATFORM
+             | COLLISION_CATEGORIES.PLAYER_PROJ,
+      },
+    });
+
+    this.setFixedRotation();
+
+    // Flying enemies ignore world gravity
     if (data.isFlying) {
-      body.setAllowGravity(false);
-      body.setGravityY(-650); // override world gravity for fliers
+      this.setIgnoreGravity(true);
     }
 
-    this.healthBar = new HealthBar(scene, x - bodyWidth / 2, y - bodyHeight / 2 - 14, bodyWidth, 6, data.hp, false);
+    this.healthBar = new HealthBar(scene, x - bodyW / 2, y - bodyH / 2 - 14, bodyW, 6, data.hp, false);
     this.healthBar.setDepth(DEPTH.ENEMIES + 1);
 
-    this.patrolTimer = Math.random() * 2000; // stagger patrol
+    this.patrolTimer = Math.random() * 2000;
     this.shootTimer = (data.shootInterval ?? 2000) * Math.random();
   }
 
-  setPlayerRef(player: Phaser.Physics.Arcade.Sprite): void {
+  private updateOneWayMask(): void {
+    if (this.enemyData.isFlying) return; // flying enemies don't need one-way logic
+    const body = this.body as MatterJS.BodyType;
+    const movingUp = body.velocity.y < -0.3;
+    const base = COLLISION_CATEGORIES.PLATFORM | COLLISION_CATEGORIES.PLAYER_PROJ;
+    body.collisionFilter.mask = movingUp
+      ? base
+      : base | COLLISION_CATEGORIES.ONE_WAY_PLATFORM;
+  }
+
+  setPlayerRef(player: Player): void {
     this.playerRef = player;
   }
 
   update(delta: number): void {
     if (this.isDead) return;
-
+    this.updateOneWayMask();
     this.updateTimers(delta);
     this.updateAI(delta);
     this.updateHealthBar();
@@ -114,20 +136,16 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
   private updateAI(delta: number): void {
     if (this.enemyState === 'hurt') return;
 
-    const body = this.body as Phaser.Physics.Arcade.Body;
-
-    // Stationary turret AI
+    // Stationary turret
     if (this.enemyData.type === 'glitchTurret') {
       this.turretAI();
       return;
     }
 
-    // Range to player
     const pDist = this.playerRef
       ? Phaser.Math.Distance.Between(this.x, this.y, this.playerRef.x, this.playerRef.y)
       : Infinity;
 
-    // Aggro / de-aggro
     if (pDist < this.aggroRange && this.enemyState === 'patrol') {
       this.enemyState = 'chase';
     } else if (pDist > this.aggroRange * 1.5 && this.enemyState === 'chase') {
@@ -135,56 +153,54 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     }
 
     if (this.enemyState === 'patrol') {
-      this.patrolBehavior(body, delta);
+      this.patrolBehavior(delta);
     } else if (this.enemyState === 'chase') {
-      this.chaseBehavior(body, pDist);
+      this.chaseBehavior(pDist);
     }
 
-    // Shooting enemies
     if (this.enemyData.shootInterval && this.shootTimer <= 0) {
       this.tryShoot();
       this.shootTimer = this.enemyData.shootInterval;
     }
   }
 
-  private patrolBehavior(body: Phaser.Physics.Arcade.Body, delta: number): void {
-    const speed = this.enemyData.speed * 0.6;
+  private patrolBehavior(_delta: number): void {
+    const speed = this.enemyData.speed * 0.6 * MATTER_VELOCITY_SCALE;
 
     if (this.enemyData.isFlying) {
-      body.setVelocityX(this.patrolDir * speed);
-      // Gentle hover
-      body.setVelocityY(Math.sin(Date.now() / 600) * 30);
+      this.setVelocityX(this.patrolDir * speed);
+      // Gentle hover sine wave (in Matter px/frame units)
+      this.setVelocityY(Math.sin(Date.now() / 600) * 30 * MATTER_VELOCITY_SCALE);
     } else {
-      body.setVelocityX(this.patrolDir * speed);
+      this.setVelocityX(this.patrolDir * speed);
     }
 
-    // Turn around at patrol boundaries
+    // Turn around at patrol distance boundary
     const distFromSpawn = Math.abs(this.x - this.spawnX);
-    if (distFromSpawn > this.enemyData.patrolRange || body.blocked.right || body.blocked.left) {
+    if (distFromSpawn > this.enemyData.patrolRange) {
       this.patrolDir *= -1;
       this.setFlipX(this.patrolDir < 0);
     }
   }
 
-  private chaseBehavior(body: Phaser.Physics.Arcade.Body, dist: number): void {
+  private chaseBehavior(dist: number): void {
     if (!this.playerRef) return;
-    const speed = this.enemyData.speed;
+    const speed = this.enemyData.speed * MATTER_VELOCITY_SCALE;
     const dx = this.playerRef.x - this.x;
 
     if (this.enemyData.isFlying) {
       const dy = this.playerRef.y - this.y;
       const len = Math.sqrt(dx * dx + dy * dy);
       if (len > 0) {
-        body.setVelocityX((dx / len) * speed);
-        body.setVelocityY((dy / len) * speed * 0.7);
+        this.setVelocityX((dx / len) * speed);
+        this.setVelocityY((dy / len) * speed * 0.7);
       }
     } else {
-      body.setVelocityX(dx > 0 ? speed : -speed);
+      this.setVelocityX(dx > 0 ? speed : -speed);
     }
 
     this.setFlipX(dx < 0);
 
-    // Melee attack range
     if (dist < this.enemyData.attackRange && this.attackCooldown <= 0) {
       this.enemyState = 'attack';
       this.attackCooldown = 1200;
@@ -195,9 +211,7 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
   }
 
   private turretAI(): void {
-    const body = this.body as Phaser.Physics.Arcade.Body;
-    body.setVelocity(0, 0);
-
+    this.setVelocity(0, 0);
     if (this.shootTimer <= 0 && this.playerRef) {
       const dist = Phaser.Math.Distance.Between(this.x, this.y, this.playerRef.x, this.playerRef.y);
       if (dist < this.enemyData.attackRange) {
@@ -208,34 +222,25 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
   }
 
   private tryShoot(): void {
-    if (!this.projectileGroup || !this.playerRef || !this.active) return;
+    if (!this.projectileList || !this.playerRef || !this.active) return;
 
     const dx = this.playerRef.x - this.x;
     const dy = this.playerRef.y - this.y;
     const len = Math.sqrt(dx * dx + dy * dy);
     if (len === 0) return;
 
-    const speed = 280;
-    const proj = new Projectile(
-      this.scene,
-      this.x,
-      this.y,
-      'proj_enemy',
-      this.enemyData.damage,
-      false
-    );
+    const speed = 280 * MATTER_VELOCITY_SCALE;
+    const proj = new Projectile(this.scene, this.x, this.y, 'proj_enemy', this.enemyData.damage, false);
     proj.launch((dx / len) * speed, (dy / len) * speed);
-    this.projectileGroup.add(proj);
+    this.projectileList.push(proj);
   }
 
-  /** Take damage, return true if killed */
   takeDamage(amount: number): boolean {
     if (this.isDead) return false;
     this.hp -= amount;
     this.enemyState = 'hurt';
     this.hurtTimer = 200;
 
-    // Flash white
     this.setTintFill(0xffffff);
     this.scene.time.delayedCall(80, () => {
       if (!this.isDead) this.clearTint();
@@ -254,13 +259,11 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     this.enemyState = 'dead';
     AudioSystem.playEnemyDeath();
 
-    const body = this.body as Phaser.Physics.Arcade.Body;
-    body.setVelocity(0, 0);
-    body.setEnable(false);
-
+    // Disable the physics body without destroying it immediately
+    this.setCollisionCategory(0);
+    this.setVelocity(0, 0);
     this.healthBar.setVisible(false);
 
-    // Death animation: flash and fade
     this.scene.tweens.add({
       targets: this,
       alpha: 0,
@@ -276,9 +279,11 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
   }
 
   private updateHealthBar(): void {
+    const body = this.body as MatterJS.BodyType;
+    const hw = (body.bounds.max.x - body.bounds.min.x) / 2;
+    const hh = (body.bounds.max.y - body.bounds.min.y) / 2;
     this.healthBar.update(this.hp, this.enemyData.hp);
-    const currentBody = this.body as Phaser.Physics.Arcade.Body;
-    this.healthBar.setPosition(this.x - currentBody.width / 2, this.y - currentBody.height / 2 - 14);
+    this.healthBar.setPosition(this.x - hw, this.y - hh - 14);
   }
 
   private updateAnimation(state: EnemyState): void {
@@ -291,20 +296,16 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
       suffix = 'attack';
     } else if (state === 'dead') {
       suffix = 'defeat';
-    } else if (state === 'chase' || state === 'patrol') {
-      // Flying enemies and patrolling ones use move when moving, idle when still
-      const body = this.body as Phaser.Physics.Arcade.Body;
-      const isMoving = Math.abs(body.velocity.x) > 5 || Math.abs(body.velocity.y) > 5;
-      suffix = isMoving ? 'move' : 'idle';
+    } else {
+      const body = this.body as MatterJS.BodyType;
+      const moving = Math.abs(body.velocity.x) > 0.05 || Math.abs(body.velocity.y) > 0.05;
+      suffix = moving ? 'move' : 'idle';
     }
 
     const animKey = `${prefix}_${suffix}`;
-
-    // Play spritesheet animation if available
     if (this.scene.anims.exists(animKey)) {
       this.anims.play(animKey, true);
     } else {
-      // Fallback to static texture
       this.updateTexture();
     }
   }
@@ -312,19 +313,13 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
   private updateTexture(): void {
     const prefix = TEXTURE_MAP[this.enemyData.type] ?? 'drone';
     let suffix = 'idle';
-
     if (this.enemyState === 'hurt') suffix = 'hurt';
     else if (this.enemyState === 'attack') suffix = 'attack';
     else if (this.enemyData.isFlying) suffix = 'fly';
     else if (this.enemyState === 'chase') suffix = this.enemyData.type === 'signalSaboteur' ? 'dash' : 'move';
-    else if (this.enemyData.speed === 0) {
-      suffix = this.shootTimer < 400 ? 'shoot' : 'activate';
-    }
-
+    else if (this.enemyData.speed === 0) suffix = this.shootTimer < 400 ? 'shoot' : 'activate';
     const key = `${prefix}_${suffix}`;
-    if (this.scene.textures.exists(key)) {
-      this.setTexture(key);
-    }
+    if (this.scene.textures.exists(key)) this.setTexture(key);
   }
 
   destroy(fromScene?: boolean): void {

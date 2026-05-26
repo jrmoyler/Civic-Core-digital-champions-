@@ -10,6 +10,23 @@ export const GRAVITY = 650;
 export const COYOTE_TIME = 100;      // ms player can jump after leaving platform
 export const JUMP_BUFFER_TIME = 120; // ms jump input is remembered before landing
 
+// Matter.js Physics
+// Arcade velocities are in px/s; Matter.js uses px/frame.
+// At 60fps, 1 px/frame = 60 px/s, so divide Arcade values by 60.
+export const MATTER_VELOCITY_SCALE = 1 / 60;
+
+// Collision category bit-flags for Matter.js broadphase filtering
+export const COLLISION_CATEGORIES = {
+  PLAYER:           0x0001,
+  ENEMY:            0x0002,
+  BOSS:             0x0004,
+  PLATFORM:         0x0008,
+  ONE_WAY_PLATFORM: 0x0010,
+  PLAYER_PROJ:      0x0020,
+  ENEMY_PROJ:       0x0040,
+  COLLECTIBLE:      0x0080,
+} as const;
+
 // Combat
 export const PLAYER_INVULN_TIME = 800; // ms of invulnerability after damage
 export const DAMAGE_TEXT_DURATION = 900;
