@@ -8,7 +8,7 @@ import Phaser from 'phaser';
 
 // ── Hero configuration ──────────────────────────────────────
 
-const HERO_IDS = ['creator', 'coder', 'advocate'] as const;
+const HERO_IDS = ['communityCreator', 'civicCoder', 'digitalEquityAdvocate'] as const;
 
 interface HeroAnimDef {
   suffix: string;

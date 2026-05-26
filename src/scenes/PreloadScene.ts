@@ -103,6 +103,11 @@ export class PreloadScene extends Phaser.Scene {
       { key: ASSET_KEYS.ZONE1_BLANK, path: ASSETS.screens.zone1Blank },
       { key: ASSET_KEYS.ZONE2_BLANK, path: ASSETS.screens.zone2Blank },
       { key: ASSET_KEYS.ZONE3_BLANK, path: ASSETS.screens.zone3Blank },
+      { key: ASSET_KEYS.TITLE_SCREEN, path: ASSETS.uiScreens.titleScreen },
+      { key: ASSET_KEYS.CHARACTER_SELECT_SCREEN, path: ASSETS.uiScreens.characterSelectScreen },
+      { key: ASSET_KEYS.AVATAR_COMMUNITY_CREATOR, path: ASSETS.avatars.communityCreator },
+      { key: ASSET_KEYS.AVATAR_CIVIC_CODER, path: ASSETS.avatars.civicCoder },
+      { key: ASSET_KEYS.AVATAR_DIGITAL_EQUITY_ADVOCATE, path: ASSETS.avatars.digitalEquityAdvocate },
     ];
 
     for (const asset of assetList) {

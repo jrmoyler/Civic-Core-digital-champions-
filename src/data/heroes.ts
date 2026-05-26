@@ -7,7 +7,7 @@ import { COLORS } from '../game/constants';
 
 export const HEROES: HeroData[] = [
   {
-    id: 'creator',
+    id: 'communityCreator',
     name: 'Community Creator',
     subtitle: 'Balanced Support Fighter',
     description: 'Armed with a glowing tablet, the Community Creator builds bridges between people and technology.',
@@ -24,7 +24,7 @@ export const HEROES: HeroData[] = [
     lore: 'Builds possibility through creativity and access. The Creator sees the world as a canvas — every wall a mural, every barrier a challenge to overcome.',
   },
   {
-    id: 'coder',
+    id: 'civicCoder',
     name: 'Civic Coder',
     subtitle: 'Fast Ranged Attacker',
     description: 'With a code gauntlet and circuit cape, the Civic Coder moves fast and strikes from a distance.',
@@ -41,7 +41,7 @@ export const HEROES: HeroData[] = [
     lore: 'Turns knowledge into action. Every line of code is a vote for a better future. The Coder knows that technology can be liberated or used to oppress — the difference is who writes it.',
   },
   {
-    id: 'advocate',
+    id: 'digitalEquityAdvocate',
     name: 'Digital Equity Advocate',
     subtitle: 'Power Tank',
     description: 'The Advocate carries a beacon torch and fights for the hardest places — slow but unstoppable.',

@@ -173,14 +173,14 @@ export class HUDScene extends Phaser.Scene {
 
     // Show hero ability indicator
     const heroColors: Record<string, number> = {
-      creator: COLORS.CREATOR_PRIMARY,
-      coder: COLORS.CODER_PRIMARY,
-      advocate: COLORS.ADVOCATE_PRIMARY,
+      communityCreator: COLORS.CREATOR_PRIMARY,
+      civicCoder: COLORS.CODER_PRIMARY,
+      digitalEquityAdvocate: COLORS.ADVOCATE_PRIMARY,
     };
     const heroColor = heroColors[this.state.selectedHero] ?? COLORS.UI_ACCENT;
 
     const abilityLabel = this.add.text(cx, cy - r - 8, {
-      creator: 'IDEA', coder: 'PATCH', advocate: 'BEACON'
+      communityCreator: 'IDEA', civicCoder: 'PATCH', digitalEquityAdvocate: 'BEACON'
     }[this.state.selectedHero] ?? 'ABILITY', {
       fontSize: '8px',
       color: '#' + heroColor.toString(16).padStart(6, '0'),

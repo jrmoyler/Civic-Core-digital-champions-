@@ -29,6 +29,15 @@ export const ASSETS = {
     collectibles: 'assets/source/collectibles_sheet.png',
   },
   // Playable level backgrounds + context screens
+  uiScreens: {
+    titleScreen: "assets/source/ui/title_screen.png",
+    characterSelectScreen: "assets/source/ui/character_select_screen.png",
+  },
+  avatars: {
+    communityCreator: "assets/source/ui/avatar_community_creator.png",
+    civicCoder: "assets/source/ui/avatar_civic_coder.png",
+    digitalEquityAdvocate: "assets/source/ui/avatar_digital_equity_advocate.png",
+  },
   screens: {
     zone1Blank: 'assets/source/zone1_blank_map.png',
     zone2Blank: 'assets/source/zone2_blank_map.png',
@@ -52,6 +61,11 @@ export const ASSET_KEYS = {
   ZONE1_BLANK: 'zone1Blank',
   ZONE2_BLANK: 'zone2Blank',
   ZONE3_BLANK: 'zone3Blank',
+  TITLE_SCREEN: 'titleScreen',
+  CHARACTER_SELECT_SCREEN: 'characterSelectScreen',
+  AVATAR_COMMUNITY_CREATOR: 'avatarCommunityCreator',
+  AVATAR_CIVIC_CODER: 'avatarCivicCoder',
+  AVATAR_DIGITAL_EQUITY_ADVOCATE: 'avatarDigitalEquityAdvocate',
 } as const;
 
 /** Gallery entries — used by AssetGalleryScene to display all images */
