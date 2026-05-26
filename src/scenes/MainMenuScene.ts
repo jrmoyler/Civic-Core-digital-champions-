@@ -39,6 +39,25 @@ export class MainMenuScene extends Phaser.Scene {
     }
 
     this.buildVersionInfo();
+
+    // Animated "TAP TO START" prompt
+    const tapText = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 110, 'TAP ANYWHERE TO START', {
+      fontSize: '16px',
+      color: '#4A90D9',
+      fontFamily: 'monospace',
+      fontStyle: 'bold',
+      letterSpacing: 4,
+      alpha: 0,
+    }).setOrigin(0.5);
+
+    this.tweens.add({
+      targets: tapText,
+      alpha: { from: 0.2, to: 1 },
+      duration: 900,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
+    });
   }
 
   private createImageButtonFromSourceRect(
