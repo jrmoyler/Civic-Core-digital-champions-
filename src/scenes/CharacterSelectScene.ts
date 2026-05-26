@@ -77,11 +77,11 @@ export class CharacterSelectScene extends Phaser.Scene {
       const panel = this.panelsData[hero.id];
       const rect  = panel.rect;
 
-      // Centre-X of panel in game space; hero sprite sits in the upper third
-      const cx       = this.bgX + (rect.x + rect.width  / 2) * this.bgScale;
-      const topY     = this.bgY +  rect.y                     * this.bgScale;
-      const panelH   = rect.height * this.bgScale;
-      const spriteY  = topY + panelH * 0.32;  // upper-third of panel
+      // Centre-X of panel in game space; hero sprite anchored at bottom
+      const cx            = this.bgX + (rect.x + rect.width  / 2) * this.bgScale;
+      const topY          = this.bgY +  rect.y                     * this.bgScale;
+      const panelH        = rect.height * this.bgScale;
+      const spriteBottomY = topY + panelH * 0.58;  // fixed foot anchor position
 
       // ── Hero idle sprite / avatar ──────────────────────────────────────────
       const spritesheetKey = `hero_${hero.id}_idle`;
@@ -92,29 +92,28 @@ export class CharacterSelectScene extends Phaser.Scene {
       };
 
       if (this.textures.exists(spritesheetKey)) {
-        // Animated idle sprite
+        // Animated idle sprite — bottom-center anchor prevents jitter
         const targetH = panelH * 0.40;
         const targetW = targetH * (104 / 120);      // idle frame aspect ratio
-        const sp = this.add.sprite(cx, spriteY, spritesheetKey, 0);
+        const sp = this.add.sprite(cx, spriteBottomY, spritesheetKey, 0);
+        sp.setOrigin(0.5, 1);
         sp.setDisplaySize(targetW, targetH);
 
-        const animKey = `${hero.id}_idle`;
-        if (this.anims.exists(animKey)) {
-          sp.play(animKey);
-        }
+        // Animation is started (or not) by updateHeroHighlight below
         this.heroSprites[hero.id] = sp;
 
       } else if (this.textures.exists(avatarKeyMap[hero.id])) {
         // Fallback: static avatar image
         const targetH = panelH * 0.40;
-        const av = this.add.image(cx, spriteY, avatarKeyMap[hero.id]);
+        const av = this.add.image(cx, spriteBottomY, avatarKeyMap[hero.id]);
+        av.setOrigin(0.5, 1);
         av.setDisplaySize(targetH, targetH);
 
       } else {
         // Last-resort coloured circle placeholder
         const g = this.add.graphics();
         g.fillStyle(hero.primaryColor, 0.6);
-        g.fillCircle(cx, spriteY, panelH * 0.18);
+        g.fillCircle(cx, spriteBottomY - panelH * 0.18, panelH * 0.18);
       }
 
       // ── Hero name label ────────────────────────────────────────────────────
@@ -164,7 +163,7 @@ export class CharacterSelectScene extends Phaser.Scene {
   ): Phaser.GameObjects.Zone {
     const { cx, cy, w, h } = this.sourceToGame(rect);
     const zone = this.add.zone(cx, cy, w, h).setInteractive({ useHandCursor: true });
-    zone.on('pointerup', callback);
+    zone.on('pointerdown', callback);
 
     if (debug) {
       const g = this.add.graphics();
@@ -247,9 +246,15 @@ export class CharacterSelectScene extends Phaser.Scene {
       if (heroId === this.currentHeroId) {
         sp.clearTint();
         sp.setAlpha(1.0);
+        const animKey = `${heroId}_idle`;
+        if (this.anims.exists(animKey) && !sp.anims.isPlaying) {
+          sp.play(animKey);
+        }
       } else {
         sp.setTint(0x888888);
         sp.setAlpha(0.65);
+        sp.stop();
+        sp.setFrame(0);
       }
     }
   }
