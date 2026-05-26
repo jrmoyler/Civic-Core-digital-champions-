@@ -68,6 +68,16 @@ public/assets/source/
 
 The game will run without images (fallback colored rectangles are generated automatically), but all visuals are best with the images in place.
 
+### Game-Ready Sprites
+
+Sliced gameplay sprites live in `public/assets/sprites/` and are loaded by `SpriteLoader` as animated Phaser sprite strips. If exported sprite strips include opaque paper/card backgrounds, run:
+
+```bash
+python3 scripts/remove_sprite_backgrounds.py
+```
+
+The utility removes only edge-connected neutral background pixels and preserves each strip's frame dimensions.
+
 ---
 
 ## Gameplay Summary
@@ -218,35 +228,31 @@ Displays all 11 source images with labels. The second tab shows unlocked lore en
 
 ## Known Limitations
 
-1. **Sprite sheets not individually sliced** — The 11 images are complex reference sheets. Entity sprites are generated programmatically (Phaser Graphics → textures) matching the sheet colors and silhouettes. The original sheets are displayed in the Asset Gallery.
+1. **Platform geometry is approximate** — Collision rectangles are manually estimated to match the blank map images. Use **G** to overlay boxes and tune `src/data/levels.ts`.
 
-2. **Platform geometry is approximate** — Collision rectangles are manually estimated to match the blank map images. Use **G** to overlay boxes and tune `src/data/levels.ts`.
+2. **No audio files** — All sound effects use WebAudio oscillator tones. No audio files are required.
 
-3. **No audio files** — All sound effects use WebAudio oscillator tones. No audio files are required.
+3. **Boss arena is not hard-locked** — Camera lock is soft. The boss arena is triggered when the player passes a threshold X coordinate near the end of the map.
 
-4. **Boss arena is not hard-locked** — Camera lock is soft. The boss arena is triggered when the player passes a threshold X coordinate near the end of the map.
-
-5. **One-way platforms** — Currently defined in data but not fully differentiated in physics (all platforms block from all sides). This can be improved by using Phaser's `checkCollisionDown` on the player body for one-way platforms.
+4. **One-way platforms** — Currently defined in data but not fully differentiated in physics (all platforms block from all sides). This can be improved by using Phaser's `checkCollisionDown` on the player body for one-way platforms.
 
 ---
 
 ## Next Production Steps
 
-1. **Manual sprite slicing** — Slice individual character and enemy sprites from the reference sheets using TexturePacker or manual JSON atlas files.
+1. **Animation polish** — Expand existing sprite-strip animations with richer timing, attack tells, and transition frames.
 
-2. **Animation polish** — Replace single-frame textures with multi-frame sprite animations using `this.anims.create()`.
+2. **Sound/music pass** — Add looping background music (zone-specific) and polished SFX from an audio library or custom compositions.
 
-3. **Sound/music pass** — Add looping background music (zone-specific) and polished SFX from an audio library or custom compositions.
+3. **Level geometry tuning** — Use the G-key debug overlay to precisely align all platform rectangles to the blank map backgrounds.
 
-4. **Level geometry tuning** — Use the G-key debug overlay to precisely align all platform rectangles to the blank map backgrounds.
+4. **One-way platform physics** — Implement proper pass-through for platforms flagged `oneWay: true`.
 
-5. **One-way platform physics** — Implement proper pass-through for platforms flagged `oneWay: true`.
+5. **Mobile test pass** — Test joystick feel, button sizing, and performance on actual mobile devices.
 
-6. **Mobile test pass** — Test joystick feel, button sizing, and performance on actual mobile devices.
+6. **Accessibility pass** — Add high-contrast mode, larger text option, and remappable controls.
 
-7. **Accessibility pass** — Add high-contrast mode, larger text option, and remappable controls.
-
-8. **Boss polish** — Expand boss attack patterns, add phase transition cutscenes, telegraphed attacks.
+7. **Boss polish** — Expand boss attack patterns, add phase transition cutscenes, telegraphed attacks.
 
 9. **Parallel HUD** — Add mini-map, combo counter, mission objective tracker.
 

@@ -1,41 +1,38 @@
 // ============================================================
 // CIVIC CORE: DIGITAL CHAMPIONS — Boss Entity
+// Physics: Phaser.Physics.Matter.Sprite (rigid-body)
 // ============================================================
 
 import Phaser from 'phaser';
 import type { BossData, BossPhase } from '../game/types';
-import { DEPTH } from '../game/constants';
+import { DEPTH, COLLISION_CATEGORIES, MATTER_VELOCITY_SCALE } from '../game/constants';
 import { HealthBar } from '../ui/HealthBar';
 import { Projectile } from './Projectile';
 import { AudioSystem } from '../systems/AudioSystem';
 import { EffectsSystem } from '../systems/EffectsSystem';
+import type { Player } from './Player';
 
-export class Boss extends Phaser.Physics.Arcade.Sprite {
+export class Boss extends Phaser.Physics.Matter.Sprite {
   public readonly bossData: BossData;
   public hp: number;
   public phase: BossPhase = 'idle';
   public isDefeated: boolean = false;
   private activated: boolean = false;
 
-  // AI timing
-  private attackTimer: number = 3500; // time until first attack
+  private attackTimer: number = 3500;
   private attackCooldown: number = 0;
-  private phaseTimer: number = 0;
   private currentAttack: number = 0;
+  private actionAnimTimer: number = 0;
 
-  // Visual
   private healthBar: HealthBar;
   private nameText: Phaser.GameObjects.Text;
   private effects: EffectsSystem;
 
-  // Projectile group
-  private projectileGroup?: Phaser.Physics.Arcade.Group;
-  private playerRef: Phaser.Physics.Arcade.Sprite | null = null;
+  private projectileList?: Projectile[];
+  private playerRef: Player | null = null;
 
-  // Phase 2 threshold
   private readonly PHASE2_HP_RATIO = 0.45;
 
-  // Boss type → spritesheet file prefix
   private static readonly FILE_PREFIX: Record<string, string> = {
     accessDenier: 'access_denier',
     algorithmicGatekeeper: 'algorithmic_gatekeeper',
@@ -47,29 +44,42 @@ export class Boss extends Phaser.Physics.Arcade.Sprite {
     x: number,
     y: number,
     data: BossData,
-    projectileGroup?: Phaser.Physics.Arcade.Group
+    projectileList?: Projectile[],
   ) {
     const filePrefix = Boss.FILE_PREFIX[data.type] ?? data.type;
     const spritesheetKey = `boss_${filePrefix}_idle`;
     const fallbackKey = `${data.type}_idle`;
     const textureKey = scene.textures.exists(spritesheetKey) ? spritesheetKey : fallbackKey;
-    super(scene, x, y, textureKey, 0);
+
+    super(scene.matter.world, x, y, textureKey, 0);
     this.bossData = data;
     this.hp = data.hp;
-    this.projectileGroup = projectileGroup;
+    this.projectileList = projectileList;
 
     scene.add.existing(this);
-    scene.physics.add.existing(this);
-
     this.setDepth(DEPTH.ENEMIES + 2);
     this.setScale(1.4);
 
-    const body = this.body as Phaser.Physics.Arcade.Body;
-    body.setSize(data.width, data.height);
-    body.setCollideWorldBounds(true);
-    body.setEnable(false); // inactive until triggered
+    this.setRectangle(data.width, data.height, {
+      label: 'boss',
+      frictionAir: 0.03,
+      friction: 0.08,
+      restitution: 0,
+      collisionFilter: {
+        category: COLLISION_CATEGORIES.BOSS,
+        mask: COLLISION_CATEGORIES.PLATFORM
+             | COLLISION_CATEGORIES.ONE_WAY_PLATFORM
+             | COLLISION_CATEGORIES.PLAYER_PROJ,
+      },
+    });
 
-    // Large health bar above boss
+    this.setFixedRotation();
+
+    // Disable collision until activated (boss is transparent/dormant)
+    this.setCollisionCategory(0);
+    this.setCollidesWith([]);
+
+    // Large health bar
     this.healthBar = new HealthBar(
       scene,
       x - data.width * 0.7,
@@ -77,12 +87,11 @@ export class Boss extends Phaser.Physics.Arcade.Sprite {
       data.width * 1.4,
       12,
       data.hp,
-      true
+      true,
     );
     this.healthBar.setDepth(DEPTH.ENEMIES + 3);
     this.healthBar.setVisible(false);
 
-    // Boss name text
     this.nameText = scene.add.text(x, y - data.height - 50, data.name.toUpperCase(), {
       fontSize: '14px',
       color: '#ff4444',
@@ -98,29 +107,37 @@ export class Boss extends Phaser.Physics.Arcade.Sprite {
     this.setAlpha(0.5);
   }
 
-  setPlayerRef(player: Phaser.Physics.Arcade.Sprite): void {
+  setPlayerRef(player: Player): void {
     this.playerRef = player;
   }
 
-  /** Trigger boss activation (called when player enters arena) */
   activate(): void {
     if (this.activated) return;
     this.activated = true;
     this.phase = 'phase1';
 
-    const body = this.body as Phaser.Physics.Arcade.Body;
-    body.setEnable(true);
+    // Re-enable collision
+    this.setCollisionCategory(COLLISION_CATEGORIES.BOSS);
+    this.setCollidesWith(
+      COLLISION_CATEGORIES.PLATFORM
+      | COLLISION_CATEGORIES.ONE_WAY_PLATFORM
+      | COLLISION_CATEGORIES.PLAYER_PROJ,
+    );
 
     this.healthBar.setVisible(true);
     this.nameText.setVisible(true);
     this.setAlpha(1);
 
-    // Entrance animation
     this.scene.cameras.main.shake(600, 0.01);
     this.effects.flashCamera(0xff0000, 150);
     AudioSystem.playBossHit();
 
-    // Flash in
+    // Phaser FX bloom burst on boss entrance (WebGL only)
+    if (this.scene.game.renderer.type === Phaser.WEBGL) {
+      const glow = this.postFX.addGlow(this.bossData.accentColor, 8, 0, false, 0.1, 16);
+      this.scene.time.delayedCall(1200, () => this.postFX.remove(glow));
+    }
+
     this.scene.tweens.add({
       targets: this,
       scaleX: { from: 0.5, to: 1.4 },
@@ -136,56 +153,49 @@ export class Boss extends Phaser.Physics.Arcade.Sprite {
     this.attackTimer -= delta;
     if (this.attackCooldown > 0) this.attackCooldown -= delta;
 
-    // Check phase transition
     if (this.phase === 'phase1' && this.hp / this.bossData.hp < this.PHASE2_HP_RATIO) {
       this.enterPhase2();
     }
 
-    // AI behavior
     if (this.attackTimer <= 0 && this.attackCooldown <= 0) {
       this.performAttack();
       this.attackTimer = this.phase === 'phase2' ? 1800 : 2400;
       this.attackCooldown = 600;
     }
 
-    // Move toward player
     if (this.playerRef && this.phase !== 'hurt') {
-      this.moveTowardPlayer(delta);
+      this.moveTowardPlayer();
     }
 
-    // Update HP bar and name position
     this.healthBar.update(this.hp, this.bossData.hp);
     this.healthBar.setPosition(
       this.x - this.bossData.width * 0.7,
-      this.y - this.bossData.height * this.scaleY - 30
+      this.y - this.bossData.height * this.scaleY - 30,
     );
     this.nameText.setPosition(this.x, this.y - this.bossData.height * this.scaleY - 50);
 
-    // Update texture
-    this.updateTexture();
+    this.updateTexture(delta);
   }
 
-  private moveTowardPlayer(delta: number): void {
+  private moveTowardPlayer(): void {
     if (!this.playerRef) return;
-    const body = this.body as Phaser.Physics.Arcade.Body;
     const dx = this.playerRef.x - this.x;
-    const speed = this.bossData.speed * (this.phase === 'phase2' ? 1.4 : 1);
+    const speed = this.bossData.speed * (this.phase === 'phase2' ? 1.4 : 1) * MATTER_VELOCITY_SCALE;
 
-    // Float toward player (horizontal only for ground bosses)
     if (this.bossData.type === 'algorithmicGatekeeper') {
       const dy = this.playerRef.y - this.y;
       const len = Math.sqrt(dx * dx + dy * dy);
       if (len > 80) {
-        body.setVelocityX((dx / len) * speed);
-        body.setVelocityY((dy / len) * speed * 0.5);
+        this.setVelocityX((dx / len) * speed);
+        this.setVelocityY((dy / len) * speed * 0.5);
       } else {
-        body.setVelocity(0, 0);
+        this.setVelocity(0, 0);
       }
     } else {
       if (Math.abs(dx) > 60) {
-        body.setVelocityX(dx > 0 ? speed : -speed);
+        this.setVelocityX(dx > 0 ? speed : -speed);
       } else {
-        body.setVelocityX(0);
+        this.setVelocityX(0);
       }
       this.setFlipX(dx < 0);
     }
@@ -196,33 +206,23 @@ export class Boss extends Phaser.Physics.Arcade.Sprite {
     this.currentAttack = (this.currentAttack + 1) % 3;
 
     switch (this.bossData.type) {
-      case 'accessDenier':
-        this.accessDenierAttack();
-        break;
-      case 'algorithmicGatekeeper':
-        this.gateKeeperAttack();
-        break;
-      case 'blackoutWarden':
-        this.wardenAttack();
-        break;
+      case 'accessDenier': this.accessDenierAttack(); break;
+      case 'algorithmicGatekeeper': this.gateKeeperAttack(); break;
+      case 'blackoutWarden': this.wardenAttack(); break;
     }
   }
 
   private accessDenierAttack(): void {
-    const body = this.body as Phaser.Physics.Arcade.Body;
     if (this.currentAttack === 0) {
-      // Charge attack
       const dir = this.playerRef!.x > this.x ? 1 : -1;
-      body.setVelocityX(dir * 350);
+      this.setVelocityX(dir * 350 * MATTER_VELOCITY_SCALE);
       this.playBossAnim('attack');
-      this.scene.time.delayedCall(500, () => { if (!this.isDefeated) { body.setVelocityX(0); this.playBossAnim('idle'); } });
+      this.scene.time.delayedCall(500, () => { if (!this.isDefeated) { this.setVelocityX(0); this.playBossAnim('idle'); } });
     } else if (this.currentAttack === 1) {
-      // Shoot barricade bolts
       this.playBossAnim('attack');
       this.shootSpread(3, 220);
     } else {
-      // Stomp
-      body.setVelocityY(-400);
+      this.setVelocityY(-400 * MATTER_VELOCITY_SCALE);
       this.playBossAnim('special');
       AudioSystem.playBossHit();
       this.effects.shakeCamera(0.015, 400);
@@ -231,27 +231,23 @@ export class Boss extends Phaser.Physics.Arcade.Sprite {
 
   private gateKeeperAttack(): void {
     if (this.currentAttack === 0) {
-      // Rotating lock beams - shoot radial burst
       this.playBossAnim('attack');
       this.shootSpread(6, 200);
     } else if (this.currentAttack === 1) {
-      // Beam attack toward player
-      if (this.playerRef && this.projectileGroup) {
+      if (this.playerRef && this.projectileList) {
         const dx = this.playerRef.x - this.x;
         const dy = this.playerRef.y - this.y;
         const len = Math.sqrt(dx * dx + dy * dy);
-        // Rapid 3-shot burst
         for (let i = 0; i < 3; i++) {
           this.scene.time.delayedCall(i * 120, () => {
-            if (this.isDefeated || !this.projectileGroup) return;
+            if (this.isDefeated || !this.projectileList) return;
             const proj = new Projectile(this.scene, this.x, this.y, 'proj_enemy', this.bossData.damage, false);
-            proj.launch((dx / len) * 300, (dy / len) * 300);
-            this.projectileGroup.add(proj);
+            proj.launch((dx / len) * 300 * MATTER_VELOCITY_SCALE, (dy / len) * 300 * MATTER_VELOCITY_SCALE);
+            this.projectileList.push(proj);
           });
         }
       }
     } else {
-      // Code ring - expand ring of projectiles
       this.playBossAnim('special');
       this.shootSpread(8, 180);
       this.effects.spawnRingPulse(this.x, this.y, 0x00FF88, 120);
@@ -259,10 +255,8 @@ export class Boss extends Phaser.Physics.Arcade.Sprite {
   }
 
   private wardenAttack(): void {
-    const body = this.body as Phaser.Physics.Arcade.Body;
     if (this.currentAttack === 0) {
-      // Hammer slam
-      body.setVelocityY(-500);
+      this.setVelocityY(-500 * MATTER_VELOCITY_SCALE);
       this.playBossAnim('special');
       this.scene.time.delayedCall(600, () => {
         if (!this.isDefeated) {
@@ -272,27 +266,26 @@ export class Boss extends Phaser.Physics.Arcade.Sprite {
         }
       });
     } else if (this.currentAttack === 1) {
-      // Blackout pulse
       this.playBossAnim('attack');
       this.effects.flashCamera(0x000000, 400);
       this.effects.shakeCamera(0.01, 300);
       this.shootSpread(5, 200);
     } else {
-      // Charge
       const dir = this.playerRef!.x > this.x ? 1 : -1;
-      body.setVelocityX(dir * 400);
+      this.setVelocityX(dir * 400 * MATTER_VELOCITY_SCALE);
       this.playBossAnim('attack');
-      this.scene.time.delayedCall(600, () => { if (!this.isDefeated) { body.setVelocityX(0); this.playBossAnim('idle'); } });
+      this.scene.time.delayedCall(600, () => { if (!this.isDefeated) { this.setVelocityX(0); this.playBossAnim('idle'); } });
     }
   }
 
   private shootSpread(count: number, speed: number): void {
-    if (!this.projectileGroup) return;
+    if (!this.projectileList) return;
+    const scaledSpeed = speed * MATTER_VELOCITY_SCALE;
     for (let i = 0; i < count; i++) {
       const angle = (Math.PI * 2 * i) / count;
       const proj = new Projectile(this.scene, this.x, this.y, 'proj_enemy', this.bossData.damage, false);
-      proj.launch(Math.cos(angle) * speed, Math.sin(angle) * speed);
-      this.projectileGroup.add(proj);
+      proj.launch(Math.cos(angle) * scaledSpeed, Math.sin(angle) * scaledSpeed);
+      this.projectileList.push(proj);
     }
   }
 
@@ -302,7 +295,11 @@ export class Boss extends Phaser.Physics.Arcade.Sprite {
     this.effects.shakeCamera(0.015, 600);
     AudioSystem.playBossHit();
 
-    // Visual pulse
+    // Phaser FX: pulsing glow for phase 2 (WebGL only)
+    if (this.scene.game.renderer.type === Phaser.WEBGL) {
+      this.postFX.addGlow(this.bossData.accentColor, 6, 0, false, 0.1, 16);
+    }
+
     this.scene.tweens.add({
       targets: this,
       scaleX: { from: 1.4, to: 1.7, yoyo: true },
@@ -315,17 +312,13 @@ export class Boss extends Phaser.Physics.Arcade.Sprite {
     this.scene.time.delayedCall(500, () => { if (!this.isDefeated) this.clearTint(); });
   }
 
-  /** Take damage, return true if defeated */
   takeDamage(amount: number): boolean {
     if (this.isDefeated) return false;
     this.hp -= amount;
+    this.playBossAnim('hurt', 220);
 
-    // Flash
     this.setTintFill(0xffffff);
-    this.scene.time.delayedCall(80, () => {
-      if (!this.isDefeated) this.clearTint();
-    });
-
+    this.scene.time.delayedCall(80, () => { if (!this.isDefeated) this.clearTint(); });
     AudioSystem.playBossHit();
 
     if (this.hp <= 0) {
@@ -340,26 +333,25 @@ export class Boss extends Phaser.Physics.Arcade.Sprite {
     this.isDefeated = true;
     this.phase = 'defeated';
 
-    const body = this.body as Phaser.Physics.Arcade.Body;
-    body.setEnable(false);
-    body.setVelocity(0, 0);
+    // Disable collision
+    this.setCollisionCategory(0);
+    this.setCollidesWith([]);
+    this.setVelocity(0, 0);
 
     this.healthBar.setVisible(false);
     this.nameText.setVisible(false);
 
-    // Dramatic defeat sequence
     this.effects.shakeCamera(0.02, 1000);
     this.effects.flashCamera(0xffffff, 200);
     AudioSystem.playVictory();
 
-    // Explode particles
     for (let i = 0; i < 12; i++) {
       this.scene.time.delayedCall(i * 80, () => {
         this.effects.spawnHitParticles(
           this.x + Phaser.Math.Between(-40, 40),
           this.y + Phaser.Math.Between(-40, 40),
           this.bossData.accentColor,
-          8
+          8,
         );
       });
     }
@@ -380,35 +372,61 @@ export class Boss extends Phaser.Physics.Arcade.Sprite {
     });
   }
 
-  private updateTexture(): void {
+  private updateTexture(delta: number): void {
     if (this.isDefeated) return;
+
+    // Don't interrupt a one-shot attack/special animation that's still playing
+    const current = this.anims.currentAnim;
+    if (current) {
+      const key = current.key;
+      const isAttackAnim = key.endsWith('_attack') || key.endsWith('_special');
+      if (isAttackAnim && this.anims.isPlaying) return;
+    }
+
+    // Choose base state
+    const body = this.body as Phaser.Physics.Arcade.Body;
+    const isMoving = Math.abs(body.velocity.x) > 10 || Math.abs(body.velocity.y) > 10;
+    let suffix = 'idle';
+    if (this.phase === 'hurt') {
+      suffix = 'hurt';
+    } else if (isMoving) {
+      suffix = 'move';
+    }
+
+    if (this.actionAnimTimer > 0) {
+      this.actionAnimTimer -= delta;
+      return;
+    }
     const suffix = this.phase === 'hurt' ? 'hurt' : 'idle';
     const animKey = `${this.bossData.type}_${suffix}`;
     if (this.scene.anims.exists(animKey)) {
-      this.anims.play(animKey, true);
+      if (this.anims.currentAnim?.key !== animKey) {
+        this.anims.play(animKey, true);
+      }
     } else {
-      // Fallback to single-frame texture
-      const legacyKey = `${this.bossData.type}_${suffix}`;
+      // Fallback to single-frame TextureFactory texture
+      const legacyKey = `${this.bossData.type}_${suffix === 'move' ? 'idle' : suffix}`;
       if (this.scene.textures.exists(legacyKey)) {
         this.setTexture(legacyKey);
       }
+      if (this.scene.textures.exists(animKey)) this.setTexture(animKey);
     }
   }
 
-  private playBossAnim(suffix: string): void {
+  private playBossAnim(suffix: string, duration: number = suffix === 'special' ? 700 : 450): void {
+    this.actionAnimTimer = duration;
     const animKey = `${this.bossData.type}_${suffix}`;
     if (this.scene.anims.exists(animKey)) {
+      this.anims.play(animKey, false); // false = restart even if already playing
       this.anims.play(animKey, true);
+    } else if (this.scene.textures.exists(animKey)) {
+      this.setTexture(animKey);
     }
   }
 
   destroy(fromScene?: boolean): void {
-    if (this.healthBar) {
-      try { this.healthBar.destroy(); } catch {}
-    }
-    if (this.nameText) {
-      try { this.nameText.destroy(); } catch {}
-    }
+    try { this.healthBar?.destroy(); } catch {}
+    try { this.nameText?.destroy(); } catch {}
     super.destroy(fromScene);
   }
 }

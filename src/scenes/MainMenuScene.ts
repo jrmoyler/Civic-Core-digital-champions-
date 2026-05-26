@@ -10,6 +10,11 @@ export class MainMenuScene extends Phaser.Scene {
   }
 
   create(): void {
+    // Reset camera to prevent bleed-over from LevelScene's startFollow/setBounds.
+    this.cameras.main.setScroll(0, 0);
+    this.cameras.main.resetFX();
+    this.cameras.main.removeBounds(); // clear any bounds set by LevelScene
+
     AudioSystem.unlock();
     // Pixel art handled by game config
 
