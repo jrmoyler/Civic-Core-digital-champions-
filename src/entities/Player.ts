@@ -72,6 +72,12 @@ export class Player extends Phaser.Physics.Matter.Sprite {
     scene.add.existing(this);
     this.setDepth(DEPTH.PLAYER);
 
+    // Physics body: 32x90, centered within a 104px-wide idle frame.
+    // Dynamically updated for wide frames (208px jump/hurt).
+    if (this.body) {
+      this.applyBodyForFrame('idle');
+      (this.body as Phaser.Physics.Arcade.Body).setGravityY(0); // Scene handles gravity
+    }
     // Compute body dimensions from the loaded frame
     const frame = (this.texture as Phaser.Textures.Texture).get(0) as Phaser.Textures.Frame;
     const frameW = (frame && frame.realWidth > 0) ? frame.realWidth : 104;
@@ -99,6 +105,26 @@ export class Player extends Phaser.Physics.Matter.Sprite {
     this.effects = new EffectsSystem(scene);
   }
 
+  /**
+   * Sets physics body size/offset to match the current animation frame width.
+   * - Normal frames (idle/run/attack/ability): 104px wide → offset_x = 36
+   * - Wide frames (jump/hurt): 208px wide → offset_x = 88
+   * The 32px-wide body is centered in both cases.
+   */
+  private applyBodyForFrame(animSuffix: string): void {
+    const body = this.body as Phaser.Physics.Arcade.Body;
+    if (!body) return;
+    const isWideFrame = animSuffix === 'jump' || animSuffix === 'hurt';
+    if (isWideFrame) {
+      body.setSize(32, 72);
+      body.setOffset(88, 5);   // center in 208-wide frame, 5px from top of 89px
+    } else {
+      body.setSize(32, 90);
+      body.setOffset(36, 10);  // center in 104-wide frame, 10px from top of 120px
+    }
+  }
+
+  /** Main update. Call every frame from LevelScene. */
   // ── Main update ─────────────────────────────────────────────
   update(input: InputState, delta: number): void {
     if (this.playerState === 'dead') return;
@@ -253,11 +279,18 @@ export class Player extends Phaser.Physics.Matter.Sprite {
       animSuffix = 'idle';
     }
 
+    // Adjust physics body offset for wide-frame animations (jump/hurt are 208px vs 104px)
+    this.applyBodyForFrame(animSuffix);
+
     const animKey = `${id}_${animSuffix}`;
 
     if (this.scene.anims.exists(animKey)) {
-      this.anims.play(animKey, true);
+      if (this.anims.currentAnim?.key !== animKey) {
+        this.anims.play(animKey, true);
+      }
     } else {
+      // Fallback: use static TextureFactory texture key (short prefixes: idle, run1, run2, etc.)
+      const fallbackSuffix = animSuffix === 'run' ? 'run1' : animSuffix;
       let fallbackSuffix = animSuffix;
       if (animSuffix === 'run') fallbackSuffix = 'run1';
       const fallbackKey = `${id}_${fallbackSuffix}`;

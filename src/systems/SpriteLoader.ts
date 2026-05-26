@@ -9,6 +9,14 @@ import Phaser from 'phaser';
 // ── Hero configuration ──────────────────────────────────────
 
 const HERO_IDS = ['communityCreator', 'civicCoder', 'digitalEquityAdvocate'] as const;
+type HeroId = typeof HERO_IDS[number];
+
+// Maps hero ID (camelCase) → sprite file prefix (snake_case)
+const HERO_FILE_PREFIX: Record<HeroId, string> = {
+  communityCreator:       'creator',
+  civicCoder:             'coder',
+  digitalEquityAdvocate:  'advocate',
+};
 
 interface HeroAnimDef {
   suffix: string;
@@ -98,11 +106,12 @@ export class SpriteLoader {
    * Call this inside your scene's preload() phase.
    */
   static preload(scene: Phaser.Scene): void {
-    // Heroes
+    // Heroes — texture key uses camelCase id, file path uses short snake_case prefix
     for (const heroId of HERO_IDS) {
+      const filePrefix = HERO_FILE_PREFIX[heroId];
       for (const anim of HERO_ANIMS) {
         const textureKey = `hero_${heroId}_${anim.suffix}`;
-        const path = `assets/sprites/heroes/${heroId}_${anim.suffix}.png`;
+        const path = `assets/sprites/heroes/${filePrefix}_${anim.suffix}.png`;
         try {
           scene.load.spritesheet(textureKey, path, {
             frameWidth: anim.frameWidth,
