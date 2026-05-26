@@ -62,14 +62,33 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.setDepth(DEPTH.PLAYER);
     this.setCollideWorldBounds(true);
 
-    // Physics body size adjusted for the larger spritesheet frames (104x120 idle)
+    // Physics body: 32x90, centered within a 104px-wide idle frame.
+    // Dynamically updated for wide frames (208px jump/hurt).
     if (this.body) {
-      (this.body as Phaser.Physics.Arcade.Body).setSize(32, 90);
-      (this.body as Phaser.Physics.Arcade.Body).setOffset(36, 10);
+      this.applyBodyForFrame('idle');
       (this.body as Phaser.Physics.Arcade.Body).setGravityY(0); // Scene handles gravity
     }
 
     this.effects = new EffectsSystem(scene);
+  }
+
+  /**
+   * Sets physics body size/offset to match the current animation frame width.
+   * - Normal frames (idle/run/attack/ability): 104px wide → offset_x = 36
+   * - Wide frames (jump/hurt): 208px wide → offset_x = 88
+   * The 32px-wide body is centered in both cases.
+   */
+  private applyBodyForFrame(animSuffix: string): void {
+    const body = this.body as Phaser.Physics.Arcade.Body;
+    if (!body) return;
+    const isWideFrame = animSuffix === 'jump' || animSuffix === 'hurt';
+    if (isWideFrame) {
+      body.setSize(32, 72);
+      body.setOffset(88, 5);   // center in 208-wide frame, 5px from top of 89px
+    } else {
+      body.setSize(32, 90);
+      body.setOffset(36, 10);  // center in 104-wide frame, 10px from top of 120px
+    }
   }
 
   /** Main update. Call every frame from LevelScene. */
@@ -222,14 +241,20 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       animSuffix = 'idle';
     }
 
+    // Adjust physics body offset for wide-frame animations (jump/hurt are 208px vs 104px)
+    this.applyBodyForFrame(animSuffix);
+
     const animKey = `${id}_${animSuffix}`;
 
     // Play spritesheet animation if available; otherwise fall back to static TextureFactory texture
     if (this.scene.anims.exists(animKey)) {
-      this.anims.play(animKey, true);
+      if (this.anims.currentAnim?.key !== animKey) {
+        this.anims.play(animKey, true);
+      }
     } else {
-      // Fallback: use static TextureFactory texture key
-      const fallbackKey = `${id}_${animSuffix}`;
+      // Fallback: use static TextureFactory texture key (short prefixes: idle, run1, run2, etc.)
+      const fallbackSuffix = animSuffix === 'run' ? 'run1' : animSuffix;
+      const fallbackKey = `${id}_${fallbackSuffix}`;
       if (this.scene.textures.exists(fallbackKey)) {
         this.setTexture(fallbackKey);
       }

@@ -382,13 +382,33 @@ export class Boss extends Phaser.Physics.Arcade.Sprite {
 
   private updateTexture(): void {
     if (this.isDefeated) return;
-    const suffix = this.phase === 'hurt' ? 'hurt' : 'idle';
+
+    // Don't interrupt a one-shot attack/special animation that's still playing
+    const current = this.anims.currentAnim;
+    if (current) {
+      const key = current.key;
+      const isAttackAnim = key.endsWith('_attack') || key.endsWith('_special');
+      if (isAttackAnim && this.anims.isPlaying) return;
+    }
+
+    // Choose base state
+    const body = this.body as Phaser.Physics.Arcade.Body;
+    const isMoving = Math.abs(body.velocity.x) > 10 || Math.abs(body.velocity.y) > 10;
+    let suffix = 'idle';
+    if (this.phase === 'hurt') {
+      suffix = 'hurt';
+    } else if (isMoving) {
+      suffix = 'move';
+    }
+
     const animKey = `${this.bossData.type}_${suffix}`;
     if (this.scene.anims.exists(animKey)) {
-      this.anims.play(animKey, true);
+      if (this.anims.currentAnim?.key !== animKey) {
+        this.anims.play(animKey, true);
+      }
     } else {
-      // Fallback to single-frame texture
-      const legacyKey = `${this.bossData.type}_${suffix}`;
+      // Fallback to single-frame TextureFactory texture
+      const legacyKey = `${this.bossData.type}_${suffix === 'move' ? 'idle' : suffix}`;
       if (this.scene.textures.exists(legacyKey)) {
         this.setTexture(legacyKey);
       }
@@ -398,7 +418,7 @@ export class Boss extends Phaser.Physics.Arcade.Sprite {
   private playBossAnim(suffix: string): void {
     const animKey = `${this.bossData.type}_${suffix}`;
     if (this.scene.anims.exists(animKey)) {
-      this.anims.play(animKey, true);
+      this.anims.play(animKey, false); // false = restart even if already playing
     }
   }
 
