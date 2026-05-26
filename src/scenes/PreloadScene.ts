@@ -192,7 +192,6 @@ export class PreloadScene extends Phaser.Scene {
         g.lineStyle(2, 0x4A90D9, 0.5);
         g.strokeRect(1, 1, 398, 298);
 
-        const label = key.replace(/([A-Z])/g, ' $1').toUpperCase();
         g.generateTexture(key, 400, 300);
         g.destroy();
 

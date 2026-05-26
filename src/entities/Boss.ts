@@ -383,6 +383,12 @@ export class Boss extends Phaser.Physics.Matter.Sprite {
       if (isAttackAnim && this.anims.isPlaying) return;
     }
 
+    // Drain action timer — no animation change until it expires
+    if (this.actionAnimTimer > 0) {
+      this.actionAnimTimer -= delta;
+      return;
+    }
+
     // Choose base state
     const body = this.body as Phaser.Physics.Arcade.Body;
     const isMoving = Math.abs(body.velocity.x) > 10 || Math.abs(body.velocity.y) > 10;
@@ -392,12 +398,6 @@ export class Boss extends Phaser.Physics.Matter.Sprite {
     } else if (isMoving) {
       suffix = 'move';
     }
-
-    if (this.actionAnimTimer > 0) {
-      this.actionAnimTimer -= delta;
-      return;
-    }
-    const suffix = this.phase === 'hurt' ? 'hurt' : 'idle';
     const animKey = `${this.bossData.type}_${suffix}`;
     if (this.scene.anims.exists(animKey)) {
       if (this.anims.currentAnim?.key !== animKey) {

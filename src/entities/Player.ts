@@ -291,8 +291,6 @@ export class Player extends Phaser.Physics.Matter.Sprite {
     } else {
       // Fallback: use static TextureFactory texture key (short prefixes: idle, run1, run2, etc.)
       const fallbackSuffix = animSuffix === 'run' ? 'run1' : animSuffix;
-      let fallbackSuffix = animSuffix;
-      if (animSuffix === 'run') fallbackSuffix = 'run1';
       const fallbackKey = `${id}_${fallbackSuffix}`;
       if (this.scene.textures.exists(fallbackKey)) {
         this.setTexture(fallbackKey);
