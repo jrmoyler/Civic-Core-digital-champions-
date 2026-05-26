@@ -49,9 +49,14 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     return Math.max(0, 1 - this.abilityCooldownRemaining / (this.heroData.abilityCooldown * 1000));
   }
 
+  private static getInitialTexture(scene: Phaser.Scene, heroId: string): string {
+    const spritesheetKey = `hero_${heroId}_idle`;
+    return scene.textures.exists(spritesheetKey) ? spritesheetKey : `${heroId}_idle`;
+  }
+
   constructor(scene: Phaser.Scene, x: number, y: number, heroData: HeroData) {
     // Use the spritesheet texture for animated hero; frame 0 is the first idle frame
-    super(scene, x, y, `hero_${heroData.id}_idle`, 0);
+    super(scene, x, y, Player.getInitialTexture(scene, heroData.id), 0);
     this.heroData = heroData;
     this.hp = heroData.hp;
     this.maxHp = heroData.hp;
@@ -62,11 +67,22 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.setDepth(DEPTH.PLAYER);
     this.setCollideWorldBounds(true);
 
-    // Physics body size adjusted for the larger spritesheet frames (104x120 idle)
+    // Physics body size auto-computed from actual loaded frame size.
     if (this.body) {
-      (this.body as Phaser.Physics.Arcade.Body).setSize(32, 90);
-      (this.body as Phaser.Physics.Arcade.Body).setOffset(36, 10);
-      (this.body as Phaser.Physics.Arcade.Body).setGravityY(0); // Scene handles gravity
+      const body = this.body as Phaser.Physics.Arcade.Body;
+      // Auto-compute body dimensions from actual loaded frame size.
+      // For 104×120 sprites: bodyW=32, bodyH=90, offsetX=36, offsetY=30 (feet at platform surface).
+      // For 40×56 fallback sprites: bodyW=24, bodyH=42, offsetX=8, offsetY=14.
+      const frame = (this.texture as Phaser.Textures.Texture).get(0) as Phaser.Textures.Frame;
+      const frameW = (frame && frame.realWidth > 0) ? frame.realWidth : 104;
+      const frameH = (frame && frame.realHeight > 0) ? frame.realHeight : 120;
+      const bodyW = Math.max(24, Math.floor(frameW * 0.31));
+      const bodyH = Math.max(48, Math.floor(frameH * 0.75));
+      const offsetX = Math.floor((frameW - bodyW) / 2);
+      const offsetY = frameH - bodyH; // aligns body bottom with visual sprite feet
+      body.setSize(bodyW, bodyH);
+      body.setOffset(offsetX, offsetY);
+      body.setGravityY(0); // world gravity (650) handles it
     }
 
     this.effects = new EffectsSystem(scene);
@@ -229,7 +245,10 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       this.anims.play(animKey, true);
     } else {
       // Fallback: use static TextureFactory texture key
-      const fallbackKey = `${id}_${animSuffix}`;
+      // Note: TextureFactory uses 'run1'/'run2' frames, not 'run'
+      let fallbackSuffix = animSuffix;
+      if (animSuffix === 'run') fallbackSuffix = 'run1';
+      const fallbackKey = `${id}_${fallbackSuffix}`;
       if (this.scene.textures.exists(fallbackKey)) {
         this.setTexture(fallbackKey);
       }
