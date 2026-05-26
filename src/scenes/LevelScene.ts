@@ -49,6 +49,7 @@ export class LevelScene extends Phaser.Scene {
 
   // Physics groups
   private platforms!: Phaser.Physics.Arcade.StaticGroup;
+  private oneWayPlatforms!: Phaser.Physics.Arcade.StaticGroup;
   private projectileGroup!: Phaser.Physics.Arcade.Group;
   private enemyProjectiles!: Phaser.Physics.Arcade.Group;
 
@@ -180,6 +181,7 @@ export class LevelScene extends Phaser.Scene {
 
   private buildPlatforms(): void {
     this.platforms = this.physics.add.staticGroup();
+    this.oneWayPlatforms = this.physics.add.staticGroup();
     this.projectileGroup = this.physics.add.group();
     this.enemyProjectiles = this.physics.add.group();
 
@@ -193,8 +195,16 @@ export class LevelScene extends Phaser.Scene {
         0  // invisible — background image shows the terrain
       );
       this.physics.add.existing(rect, true);
-      this.platforms.add(rect);
+      if (plat.oneWay) {
+        this.oneWayPlatforms.add(rect);
+      } else {
+        this.platforms.add(rect);
+      }
     }
+
+    // Refresh static body quadtrees after all platforms are placed
+    this.platforms.refresh();
+    this.oneWayPlatforms.refresh();
   }
 
   private spawnPlayer(): void {
@@ -252,16 +262,52 @@ export class LevelScene extends Phaser.Scene {
     // Player on platforms
     this.physics.add.collider(this.player, this.platforms);
 
+    // One-way platform collision: only block when player is falling (not jumping through)
+    this.physics.add.collider(
+      this.player,
+      this.oneWayPlatforms,
+      undefined,
+      (_obj1: unknown, _obj2: unknown): boolean => {
+        const pb = this.player.body as Phaser.Physics.Arcade.Body;
+        // Allow pass-through when jumping (velocity.y < -5), block when falling/standing
+        return pb.velocity.y >= -5;
+      },
+      this
+    );
+
     // Enemies on platforms
     for (const enemy of this.enemies) {
       if (!enemy.enemyData.isFlying) {
         this.physics.add.collider(enemy, this.platforms);
+        this.physics.add.collider(
+          enemy,
+          this.oneWayPlatforms,
+          undefined,
+          (_obj1: unknown, _obj2: unknown): boolean => {
+            const eb = enemy.body as Phaser.Physics.Arcade.Body;
+            return eb.velocity.y >= -5;
+          },
+          this
+        );
       }
     }
 
     // Boss on platforms
     if (this.boss) {
       this.physics.add.collider(this.boss, this.platforms);
+
+      // Boss one-way platform collision
+      this.physics.add.collider(
+        this.boss,
+        this.oneWayPlatforms,
+        undefined,
+        (_obj1: unknown, _obj2: unknown): boolean => {
+          if (!this.boss) return false;
+          const bb = this.boss.body as Phaser.Physics.Arcade.Body;
+          return bb.velocity.y >= -5;
+        },
+        this
+      );
     }
 
     // Player projectiles hit enemies
