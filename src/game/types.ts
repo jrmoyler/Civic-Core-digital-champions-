@@ -2,7 +2,15 @@
 // CIVIC CORE: DIGITAL CHAMPIONS — TypeScript Types
 // ============================================================
 
-export type HeroId = 'creator' | 'coder' | 'advocate';
+export type HeroId = 'communityCreator' | 'civicCoder' | 'digitalEquityAdvocate';
+
+export function getAvatarKeyForHero(heroId: HeroId): string {
+  switch (heroId) {
+    case 'communityCreator': return 'avatarCommunityCreator';
+    case 'civicCoder': return 'avatarCivicCoder';
+    case 'digitalEquityAdvocate': return 'avatarDigitalEquityAdvocate';
+  }
+}
 export type ZoneId = 'zone1' | 'zone2' | 'zone3';
 export type EnemyType =
   | 'misinformerDrone'
